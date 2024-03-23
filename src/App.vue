@@ -10,17 +10,13 @@
                     <Button class="tree-title-button" icon="pi pi-plus" severity="secondary" text aria-label="Add" 
                             size="small" @click.stop="addSave()"
                             v-tooltip.left="{ value: 'Add Save', showDelay: 1000 }" />
-
-                    <!-- <Button class="tree-title-button" icon="pi pi-filter" severity="secondary" text aria-label="Add" 
-                            size="small" @click.stop="filter()"
-                            v-tooltip.left="{ value: 'Add Save', showDelay: 1000 }" /> -->
                 </div>
             </div>
 
             <div class="tree-wrapper">
                 <Tree class="w-full h-full bg-transparent text-400" :value="nodes" :filter="true" filterMode="lenient"
                       filterPlaceholder="Search saves..." scrollHeight="flex" :metaKeySelection="false" selectionMode="single"
-                       v-model:selectionKeys="selectedKey" @node-select="onNodeSelected" @node-unselect="onNodeUnselected">
+                       v-model:selectionKeys="selectedKeys" @node-select="onNodeSelected" @node-unselect="onNodeUnselected">
                     <template #default="slotProps">
                         <div class="tree-node">
                             <div class="tree-node-label">
@@ -33,7 +29,7 @@
         </SplitterPanel>
 
         <SplitterPanel class="panel" :size="75" :minSize="20">
-            <SaveGame v-if="selectedId" :id="selectedId" @cancelled="onCancelled" @deleted="onDeleted" @saved="onSaved" />
+            <SaveGame v-if="selectedId" :id="selectedId" @cancelled="onCancelled" @deleted="onDeleted" @saved="onSaved" @changed="onChanged" />
             <div v-else class="flex flex-column flex-grow-1 justify-content-center">
                 <span class="text-center text-color-secondary">Select or create a save to get started.</span>
             </div>
@@ -45,12 +41,16 @@
 </template>
 
 <script setup>
-import { ref, onBeforeMount, onMounted, computed } from "vue";
+import { ref, onBeforeMount } from "vue";
 import SaveGame from "./Components/SaveGame.vue";
+import { useConfirm } from "primevue/useconfirm";
 
 const nodes = ref(null);
-const selectedKey = ref(null);
+const selectedKeys = ref({});
 const selectedId = ref(null);
+const hasUnsavedChanges = ref(false);
+
+const confirm = useConfirm();
 
 onBeforeMount(async () => {
     await getSaves();
@@ -58,44 +58,75 @@ onBeforeMount(async () => {
 
 async function onNodeSelected(node) {
     if (node.type !== "game") {
-        selectedId.value = node.key;
+        console.log("selected " + node.key);
+        if (hasUnsavedChanges.value) {
+            confirmChangeSelected(node.key);
+        } else {
+            selectedId.value = node.key;
+        }
     }
 }
 
 async function onNodeUnselected(node) {
     if (node.type !== "game") {
-        selectedId.value = null;
+        console.log("unselected " + node.key);
+        if (hasUnsavedChanges.value) {
+            confirmChangeSelected(null);
+        } else {
+            selectedId.value = null;
+        }
     }
 }
 
 async function addSave() {
     selectedId.value = "new";
-    selectedKey.value = null;
-}
-
-async function filter() {
-
+    selectedKeys.value = null;
 }
 
 async function onCancelled() {
     selectedId.value = null;
-    selectedKey.value = null;
+    selectedKeys.value = null;
 }
 
 async function onDeleted() {
     selectedId.value = null;
-    selectedKey.value = null;
+    selectedKeys.value = null;
     await getSaves();
 }
 
 async function onSaved(e) {
     selectedId.value = e.Id;
-    selectedKey.value = e.Id;
+    selectedKeys.value = e.Id;
+    hasUnsavedChanges.value = false;
     await getSaves();
+}
+
+async function onChanged() {
+    hasUnsavedChanges.value = true;
 }
 
 async function getSaves() {
     nodes.value = await galdrInvoke("getSaves");
+}
+
+function confirmChangeSelected(key) {
+    confirm.require({
+        message: 'There are unsaved changes. Continue?',
+        header: 'Unsaved Changes',
+        icon: 'pi pi-info-circle',
+        rejectLabel: 'Cancel',
+        acceptLabel: 'Yes',
+        rejectClass: 'p-button-secondary p-button-outlined',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            hasUnsavedChanges.value = false;
+            selectedKeys.value = { [key]: true };
+            selectedId.value = key;
+        },
+        reject: () => {
+            selectedKeys.value = { [selectedId.value]: true };
+        }
+    });
 }
 </script>
 

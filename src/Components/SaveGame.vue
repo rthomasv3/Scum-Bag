@@ -99,12 +99,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeMount, watch, onUpdated } from "vue";
+import { ref, computed, onBeforeMount, watch } from "vue";
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
 
 const props = defineProps(["id"]);
-const emit = defineEmits(["cancelled", "deleted", "saved"]);
+const emit = defineEmits(["cancelled", "deleted", "saved", "changed"]);
 
 const name = ref(null);
 const enabled = ref(true);
@@ -140,9 +140,11 @@ const search = async (event) => {
 }
 
 onBeforeMount(async () => {
+    supressChangeFlag = true;
     await getSave();
     await getBackups();
     allGames.value = await galdrInvoke("getGames");
+    supressChangeFlag = false;
 
     window.addEventListener(
         "saveUpdated",
@@ -156,26 +158,57 @@ onBeforeMount(async () => {
 });
 
 watch(() => props.id, async () => {
+    supressChangeFlag = true;
     await getSave();
     await getBackups();
-    
-    supressChangeFlag = true;
     hasChanges.value = false;
-    supressChangeFlag = true;
+    supressChangeFlag = false;
 
 }, { flush: 'post' });
 
-onUpdated(() => {
+watch(enabled, () => {
     if (!supressChangeFlag) {
         hasChanges.value = true;
-    } else {
-        supressChangeFlag = false;
+        emit("changed");
+    }
+});
+
+watch(name, () => {
+    if (!supressChangeFlag) {
+        hasChanges.value = true;
+        emit("changed");
+    }
+});
+
+watch(location, () => {
+    if (!supressChangeFlag) {
+        hasChanges.value = true;
+        emit("changed");
+    }
+});
+
+watch(game, () => {
+    if (!supressChangeFlag) {
+        hasChanges.value = true;
+        emit("changed");
+    }
+});
+
+watch(frequency, () => {
+    if (!supressChangeFlag) {
+        hasChanges.value = true;
+        emit("changed");
+    }
+});
+
+watch(max, () => {
+    if (!supressChangeFlag) {
+        hasChanges.value = true;
+        emit("changed");
     }
 });
 
 async function getSave() {
-    supressChangeFlag = true;
-
     if (props.id !== "new") {
         const saveGame = await galdrInvoke("getSave", { id: props.id });
         if (saveGame) {
@@ -197,8 +230,6 @@ async function getSave() {
 }
 
 async function getBackups() {
-    supressChangeFlag = true;
-
     if (props.id !== "new") {
         backups.value = await galdrInvoke("getBackups", { id: props.id });
     } else {
@@ -279,6 +310,7 @@ async function save() {
     }
 
     if (success) {
+        hasChanges.value = false;
         toast.add({ severity: 'success', summary: 'Success', detail: 'Saved successfully', group: 'tr', life: 3000 });
     } else {
         toast.add({ severity: 'error', summary: 'Failed', detail: 'Save failed', group: 'tr', life: 3000 });
