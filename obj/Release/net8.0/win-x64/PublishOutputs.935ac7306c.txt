@@ -1,4 +1,0 @@
-C:\Users\Robert\Code\Scum Bag\Scum Bag\bin\Release\net8.0\win-x64\publish\Scum Bag.pdb
-C:\Users\Robert\Code\Scum Bag\Scum Bag\bin\Release\net8.0\win-x64\publish\nfd.lib
-C:\Users\Robert\Code\Scum Bag\Scum Bag\bin\Release\net8.0\win-x64\publish\nfd.pdb
-C:\Users\Robert\Code\Scum Bag\Scum Bag\bin\Release\net8.0\win-x64\publish\Scum Bag.exe
