@@ -3,7 +3,7 @@
 ![screenshot](screenshot.png)
 
 ## About
-Scum Bag is a place to hold all of your save backups. It automatically backs up your save files at a given interval and lets you restore to any point.
+Scum Bag is a place to hold all of your save backups. It automatically backs up your save files at a given interval and lets you restore to any point. Powered by [Galdr](https://github.com/rthomasv3/Galdr).
 
 ### Features
 
