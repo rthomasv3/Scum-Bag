@@ -145,15 +145,17 @@ internal sealed class BackupService
 
             foreach (FileInfo fileInfo in files)
             {
-                using FileStream fileStream = fileInfo.Open(FileMode.Open);
-
-                try
+                if (fileInfo.Name != "Scum_Bag_Screenshot.jpg")
                 {
-                    fileStream.Position = 0;
-                    byte[] hashValue = mySHA256.ComputeHash(fileStream);
-                    allHashes.AddRange(hashValue);
+                    try
+                    {
+                        using FileStream fileStream = fileInfo.Open(FileMode.Open);
+                        fileStream.Position = 0;
+                        byte[] hashValue = mySHA256.ComputeHash(fileStream);
+                        allHashes.AddRange(hashValue);
+                    }
+                    catch { }
                 }
-                catch { }
             }
 
             hashData = mySHA256.ComputeHash(allHashes.ToArray());
@@ -173,7 +175,7 @@ internal sealed class BackupService
 
         if (hashData != null)
         {
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new();
             for (int i = 0; i < hashData.Length; i++)
             {
                 builder.Append(hashData[i].ToString("x2"));
