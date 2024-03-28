@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Galdr;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.Models;
@@ -15,16 +14,19 @@ internal sealed class SaveGameCommands
     private readonly SaveService _saveService;
     private readonly DialogService _dialogService;
     private readonly GameService _gameService;
+    private readonly LoggingService _logger;
 
     #endregion
 
     #region Constructor
 
-    public SaveGameCommands(SaveService saveService, DialogService dialogService, GameService gameService)
+    public SaveGameCommands(SaveService saveService, DialogService dialogService, GameService gameService,
+        LoggingService logger)
     {
         _saveService = saveService;
         _dialogService = dialogService;
         _gameService = gameService;
+        _logger = logger;
     }
 
     #endregion
@@ -96,7 +98,7 @@ internal sealed class SaveGameCommands
         }
         catch (Exception e)
         {
-
+            _logger.LogError(e.ToString());
         }
 
         return file;
@@ -113,7 +115,7 @@ internal sealed class SaveGameCommands
         }
         catch (Exception e)
         {
-
+            _logger.LogError(e.ToString());
         }
 
         return directory;

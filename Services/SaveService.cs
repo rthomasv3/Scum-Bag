@@ -12,21 +12,22 @@ internal sealed class SaveService
 {
     #region Fields
 
-    private static readonly HashSet<string> _blackList = ["Steamworks Common Redistributables"];
-
     private readonly Config _config;
     private readonly BackupService _backupService;
     private readonly ScreenshotService _screenshotService;
+    private readonly LoggingService _logger;
 
     #endregion
 
     #region Constructor
 
-    public SaveService(Config config, BackupService backupService, ScreenshotService screenshotService)
+    public SaveService(Config config, BackupService backupService, ScreenshotService screenshotService,
+        LoggingService logger)
     {
         _config = config;
         _backupService = backupService;
         _screenshotService = screenshotService;
+        _logger = logger;
     }
 
     #endregion
@@ -253,7 +254,7 @@ internal sealed class SaveService
         }
         catch (Exception e)
         {
-
+            _logger.LogError(e.ToString());
         }
 
         return restored;

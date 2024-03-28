@@ -20,6 +20,7 @@ internal class Program
             .AddSingleton<GameService>()
             .AddSingleton<SaveService>()
             .AddSingleton<ScreenshotService>()
+            .AddSingleton<LoggingService>()
 #if DEBUG
             .SetDebug(true)
             .SetPort(1314)

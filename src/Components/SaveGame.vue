@@ -25,7 +25,7 @@
                 <label for="backup-location">Backup Location</label>
                 <div class="flex gap-3">
                     <InputText id="backup-location" class="flex-grow-1" placeholder="Save location to backup..." v-model="backupLocation" variant="filled" readonly />
-                    <Button icon="pi pi-copy" severity="secondary" text @click="copyPath(backupLocation)" />
+                    <Button v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy" severity="secondary" text @click="copyPath(backupLocation)" />
                 </div>
             </div>
 
@@ -94,7 +94,8 @@
                             <template #option="slotProps">
                                 <div v-if="backupLocation" class="flex gap-3 backup-option align-items-center">
                                     <div class="flex-grow-1">{{ new Date(slotProps.option.Time).toLocaleString() }}</div>
-                                    <Button class="backup-copy tiny-button" icon="pi pi-copy" severity="secondary" text @click.stop="copyPath(slotProps.option.Directory)" />
+                                    <Button class="backup-copy tiny-button" v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy" 
+                                            severity="secondary" text @click.stop="copyPath(slotProps.option.Directory)" />
                                 </div>
                             </template>
                         </Listbox>
@@ -365,7 +366,7 @@ async function restore() {
     if (restored) {
         toast.add({ severity: 'success', summary: 'Success', detail: 'Save restored successfully', group: 'tr', life: 3000 });
     } else {
-        toast.add({ severity: 'error', summary: 'Failed', detail: 'Save restore failed (permissions error)', group: 'tr', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Failed', detail: 'Save restore failed', group: 'tr', life: 3000 });
     }
 }
 
