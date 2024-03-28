@@ -68,6 +68,12 @@ internal sealed class SaveGameCommands
     }
 
     [Command]
+    public bool CreateManualBackup(SaveGame save)
+    {
+        return _saveService.CreateManualBackup(save.Id);
+    }
+
+    [Command]
     public bool Restore(Restore restore)
     {
         return _saveService.RestoreSave(restore.Id, restore.Time);
@@ -82,13 +88,35 @@ internal sealed class SaveGameCommands
     [Command]
     public string OpenFileDialog()
     {
-        return _dialogService.OpenFileDialog();
+        string file = null;
+
+        try
+        {
+            file = _dialogService.OpenFileDialog();
+        }
+        catch (Exception e)
+        {
+
+        }
+
+        return file;
     }
 
     [Command]
     public string OpenDirectoryDialog()
     {
-        return _dialogService.OpenDirectoryDialog();
+        string directory = null;
+
+        try
+        {
+            directory = _dialogService.OpenDirectoryDialog();
+        }
+        catch (Exception e)
+        {
+
+        }
+
+        return directory;
     }
 
     #endregion

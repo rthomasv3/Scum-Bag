@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.Models;
@@ -80,6 +79,12 @@ internal sealed class SaveService
             if (save.Id == id)
             {
                 saveGame = save;
+
+                if (String.IsNullOrWhiteSpace(save.BackupLocation))
+                {
+                    save.BackupLocation = Path.Combine(_config.DataDirectory, save.Id.ToString());
+                }
+
                 break;
             }
         }
@@ -113,7 +118,8 @@ internal sealed class SaveService
                 backups.Add(new Backup()
                 {
                     Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
-                    Screenshot = screenshot
+                    Screenshot = screenshot,
+                    Directory = dir.FullName
                 });
             }
         }
@@ -129,6 +135,7 @@ internal sealed class SaveService
         }
         
         saveGame.Id = Guid.NewGuid();
+        saveGame.BackupLocation = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
 
         List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
 
@@ -213,28 +220,40 @@ internal sealed class SaveService
         return deleted;
     }
 
+    public bool CreateManualBackup(Guid id)
+    {
+        return _backupService.CreateManualBackup(id);
+    }
+
     public bool RestoreSave(Guid id, long time)
     {
         bool restored = false;
 
-        SaveGame saveGame = GetSave(id);
-
-        string path = Path.Combine(_config.DataDirectory, id.ToString());
-
-        DirectoryInfo parent = new(path);
-
-        if (parent.Exists)
+        try
         {
-            DirectoryInfo[] dirs = parent.GetDirectories();
+            SaveGame saveGame = GetSave(id);
 
-            foreach (DirectoryInfo dir in dirs)
+            string path = Path.Combine(_config.DataDirectory, id.ToString());
+
+            DirectoryInfo parent = new(path);
+
+            if (parent.Exists)
             {
-                if (((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds() == time)
+                DirectoryInfo[] dirs = parent.GetDirectories();
+
+                foreach (DirectoryInfo dir in dirs)
                 {
-                    restored = RestoreFile(dir.FullName, saveGame.SaveLocation);
-                    break;
+                    if (((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds() == time)
+                    {
+                        restored = RestoreFile(dir.FullName, saveGame.SaveLocation);
+                        break;
+                    }
                 }
             }
+        }
+        catch (Exception e)
+        {
+
         }
 
         return restored;
@@ -250,7 +269,9 @@ internal sealed class SaveService
 
         if (Directory.Exists(source))
         {
-            string[] files = Directory.GetFiles(source);
+            string[] files = Directory.GetFiles(source, "*.*", SearchOption.AllDirectories)
+                .Where(x => x.Contains("Scum_Bag_Screenshot.jpg"))
+                .ToArray();
 
             if (files.Length == 1)
             {
@@ -279,7 +300,10 @@ internal sealed class SaveService
             DirectoryInfo[] dirs = dir.GetDirectories();
 
             // Create the destination directory
-            Directory.CreateDirectory(destinationDir);
+            if (!Directory.Exists(destinationDir))
+            {
+                Directory.CreateDirectory(destinationDir);
+            }
 
             // Get the files in the source directory and copy to the destination directory
             foreach (FileInfo file in dir.GetFiles())

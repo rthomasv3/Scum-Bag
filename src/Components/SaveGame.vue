@@ -21,6 +21,14 @@
                 </div>
             </div>
 
+            <div v-if="backupLocation" class="flex flex-column gap-2">
+                <label for="backup-location">Backup Location</label>
+                <div class="flex gap-3">
+                    <InputText id="backup-location" class="flex-grow-1" placeholder="Save location to backup..." v-model="backupLocation" variant="filled" readonly />
+                    <Button icon="pi pi-copy" severity="secondary" text @click="copyPath(backupLocation)" />
+                </div>
+            </div>
+
             <div class="flex flex-column gap-2 p-fluid">
                 <label for="game">Game</label>
                 <AutoComplete v-model="game" :suggestions="filteredGames" placeholder="Game name..."  @complete="search" />
@@ -84,14 +92,23 @@
                     <div class="col">
                         <Listbox v-model="selectedBackup" :options="backups" listStyle="height:250px" emptyMessage="No Backups">
                             <template #option="slotProps">
-                                {{ new Date(slotProps.option.Time).toLocaleString() }}
+                                <div v-if="backupLocation" class="flex gap-3 backup-option align-items-center">
+                                    <div class="flex-grow-1">{{ new Date(slotProps.option.Time).toLocaleString() }}</div>
+                                    <Button class="backup-copy tiny-button" icon="pi pi-copy" severity="secondary" text @click.stop="copyPath(slotProps.option.Directory)" />
+                                </div>
                             </template>
                         </Listbox>
                     </div>
                 </div>
 
-                <div class="flex justify-content-end">
-                    <Button label="Restore" :disabled="!selectedBackup" @click="restore" />
+                <div class="flex gap-3">
+                    <div class="flex flex-grow-1">
+                        <Button label="Backup Now" @click="manualBackup" />
+                    </div>
+
+                    <div class="flex">
+                        <Button label="Restore" :disabled="!selectedBackup" @click="restore" />
+                    </div>
                 </div>
             </div>
         </div>
@@ -108,6 +125,7 @@ const emit = defineEmits(["cancelled", "deleted", "saved", "changed"]);
 
 const name = ref(null);
 const enabled = ref(true);
+const backupLocation = ref(null);
 const game = ref("");
 const allGames = ref([]);
 const filteredGames = ref([]);
@@ -143,6 +161,7 @@ onBeforeMount(async () => {
     supressChangeFlag = true;
     await getSave();
     await getBackups();
+    selectedBackup.value = null;
     allGames.value = await galdrInvoke("getGames");
     supressChangeFlag = false;
 
@@ -161,6 +180,7 @@ watch(() => props.id, async () => {
     supressChangeFlag = true;
     await getSave();
     await getBackups();
+    selectedBackup.value = null;
     hasChanges.value = false;
     supressChangeFlag = false;
 
@@ -214,6 +234,7 @@ async function getSave() {
         if (saveGame) {
             name.value = saveGame.Name;
             enabled.value = saveGame.Enabled;
+            backupLocation.value = saveGame.BackupLocation;
             game.value = saveGame.Game;
             location.value = saveGame.SaveLocation;
             frequency.value = saveGame.Frequency;
@@ -222,6 +243,7 @@ async function getSave() {
     } else {
         name.value = null;
         enabled.value = true;
+        backupLocation.value = null;
         game.value = "";
         location.value = null;
         frequency.value = 5;
@@ -298,6 +320,7 @@ async function save() {
             Id: props.id,
             Name: name.value,
             Enabled: enabled.value,
+            BackupLocation: backupLocation.value,
             SaveLocation: location.value,
             Game: game.value,
             Frequency: frequency.value,
@@ -326,13 +349,32 @@ function uuidv4() {
     });
 }
 
+async function manualBackup() {
+    const backedUp = await galdrInvoke("createManualBackup", { Id: props.id });
+
+    if (backedUp) {
+        toast.add({ severity: 'success', summary: 'Success', detail: 'Backup created successfully', group: 'tr', life: 3000 });
+    } else {
+        toast.add({ severity: 'error', summary: 'Failed', detail: 'Backups are already up-to-date', group: 'tr', life: 3000 });
+    }
+}
+
 async function restore() {
-    const restored = await galdrInvoke("restore", { Id: props.id, time: selectedBackup.value });
+    const restored = await galdrInvoke("restore", { Id: props.id, Time: selectedBackup.value.Time });
+
     if (restored) {
         toast.add({ severity: 'success', summary: 'Success', detail: 'Save restored successfully', group: 'tr', life: 3000 });
     } else {
-        toast.add({ severity: 'error', summary: 'Failed', detail: 'Save restore failed', group: 'tr', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Failed', detail: 'Save restore failed (permissions error)', group: 'tr', life: 3000 });
     }
+}
+
+function copyPath(path) {
+    navigator.clipboard.writeText(path).then(function() {
+        toast.add({ severity: 'info', summary: 'Copied', detail: 'Copied path to clipboard', group: 'tr', life: 3000 });
+    }, function(err) {
+        toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to copy path to clipboard', group: 'tr', life: 3000 });
+    });
 }
 </script>
 
@@ -342,6 +384,16 @@ async function restore() {
     flex: 1 1 1px;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+.backup-option:not(:hover) .backup-copy {
+    visibility: hidden;
+}
+
+.tiny-button {
+    font-size: 0.65rem;
+    padding: 0.25rem;
+    width: 2rem;
 }
 </style>
 

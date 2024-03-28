@@ -81,6 +81,11 @@ internal sealed class BackupService
         }
     }
 
+    public bool CreateManualBackup(Guid id)
+    {
+        return CreateBackup(id);
+    }
+
     #endregion
 
     #region Private Methods
@@ -245,6 +250,13 @@ internal sealed class BackupService
 
     private void HandleTimer(Guid id)
     {
+        CreateBackup(id);
+    }
+
+    private bool CreateBackup(Guid id)
+    {
+        bool backedUp = false;
+
         if (_saveGames.ContainsKey(id))
         {
             SaveGame saveGame = _saveGames[id];
@@ -326,10 +338,13 @@ internal sealed class BackupService
                         }
                     }
 
+                    backedUp = true;
                     _eventService.PublishEvent("saveUpdated", new { Id = id });
                 }
             }
         }
+
+        return backedUp;
     }
 
     #endregion

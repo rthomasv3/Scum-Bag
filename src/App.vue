@@ -58,7 +58,6 @@ onBeforeMount(async () => {
 
 async function onNodeSelected(node) {
     if (node.type !== "game") {
-        console.log("selected " + node.key);
         if (hasUnsavedChanges.value) {
             confirmChangeSelected(node.key);
         } else {
@@ -69,7 +68,6 @@ async function onNodeSelected(node) {
 
 async function onNodeUnselected(node) {
     if (node.type !== "game") {
-        console.log("unselected " + node.key);
         if (hasUnsavedChanges.value) {
             confirmChangeSelected(null);
         } else {
@@ -86,17 +84,19 @@ async function addSave() {
 async function onCancelled() {
     selectedId.value = null;
     selectedKeys.value = null;
+    hasUnsavedChanges.value = false;
 }
 
 async function onDeleted() {
     selectedId.value = null;
     selectedKeys.value = null;
+    hasUnsavedChanges.value = false;
     await getSaves();
 }
 
 async function onSaved(e) {
     selectedId.value = e.Id;
-    selectedKeys.value = e.Id;
+    selectedKeys.value = { [e.Id]: true };
     hasUnsavedChanges.value = false;
     await getSaves();
 }
