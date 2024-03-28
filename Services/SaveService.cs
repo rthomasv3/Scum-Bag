@@ -270,19 +270,24 @@ internal sealed class SaveService
 
         if (Directory.Exists(source))
         {
-            string[] files = Directory.GetFiles(source, "*.*", SearchOption.AllDirectories)
-                .Where(x => !x.Contains("Scum_Bag_Screenshot.jpg"))
-                .ToArray();
-
-            if (files.Length == 1)
+            if (Directory.Exists(destination))
             {
-                File.Copy(files[0], destination, true);
+                OverwriteDirectory(source, destination);
                 restored = true;
             }
             else
             {
-                OverwriteDirectory(source, destination);
-                restored = true;
+                string fileName = Path.GetFileName(destination);
+
+                string[] files = Directory.GetFiles(source, "*.*", SearchOption.AllDirectories)
+                    .Where(x => x.EndsWith(fileName))
+                    .ToArray();
+
+                if (files.Length == 1)
+                {
+                    File.Copy(files[0], destination, true);
+                    restored = true;
+                }
             }
         }
 
