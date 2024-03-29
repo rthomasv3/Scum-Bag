@@ -90,7 +90,7 @@
                     </div>
 
                     <div class="col">
-                        <Listbox v-model="selectedBackup" :options="backups" listStyle="height:250px" emptyMessage="No Backups">
+                        <Listbox v-model="selectedBackup" :options="backups" listStyle="height:250px" emptyMessage="No Backups" @change="backupChanged">
                             <template #option="slotProps">
                                 <div v-if="backupLocation" class="flex gap-3 backup-option align-items-center">
                                     <div class="flex-grow-1">{{ new Date(slotProps.option.Time).toLocaleString() }}</div>
@@ -139,13 +139,7 @@ const backupDisplay = computed(() => {
 const backups = ref([]);
 const selectedBackup = ref(null);
 const hasChanges = ref(false);
-const screenshot = computed(() => {
-    if (selectedBackup.value?.Screenshot) {
-        return "data:image/jpg;base64," + selectedBackup.value.Screenshot;
-    } else {
-        return null;
-    }
-});
+const screenshot = ref(null);
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -163,6 +157,7 @@ onBeforeMount(async () => {
     await getSave();
     await getBackups();
     selectedBackup.value = null;
+    screenshot.value = null;
     allGames.value = await galdrInvoke("getGames");
     supressChangeFlag = false;
 
@@ -182,6 +177,7 @@ watch(() => props.id, async () => {
     await getSave();
     await getBackups();
     selectedBackup.value = null;
+    screenshot.value = null;
     hasChanges.value = false;
     supressChangeFlag = false;
 
@@ -249,6 +245,7 @@ async function getSave() {
         location.value = null;
         frequency.value = 5;
         max.value = 24;
+        screenshot.value = null;
     }
 }
 
@@ -257,6 +254,16 @@ async function getBackups() {
         backups.value = await galdrInvoke("getBackups", { id: props.id });
     } else {
         backups.value = [];
+    }
+}
+
+async function backupChanged(e) {
+    const screenshotData = await galdrInvoke("getScreenshot", { directory: e.value.Directory });
+
+    if (screenshotData) {
+        screenshot.value = "data:image/jpg;base64," + screenshotData; 
+    } else {
+        screenshot.value = null;
     }
 }
 

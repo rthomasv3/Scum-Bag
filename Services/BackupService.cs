@@ -148,7 +148,7 @@ internal sealed class BackupService
 
             foreach (FileInfo fileInfo in files)
             {
-                if (fileInfo.Name != "Scum_Bag_Screenshot.jpg")
+                if (fileInfo.Name != _config.BackupScreenshotName)
                 {
                     try
                     {
@@ -308,11 +308,11 @@ internal sealed class BackupService
                         File.Copy(saveGame.SaveLocation, filePath);
                     }
 
-                    string screenShotPath = Path.Combine(parentDirectory, "latest_screenshot.jpg");
+                    string screenShotPath = Path.Combine(parentDirectory, _config.LatestScreenshotName);
 
                     if (File.Exists(screenShotPath))
                     {
-                        string newScreenshotPath = Path.Combine(backupPath, "Scum_Bag_Screenshot.jpg");
+                        string newScreenshotPath = Path.Combine(backupPath, _config.BackupScreenshotName);
                         File.Copy(screenShotPath, newScreenshotPath, true);
                     }
 

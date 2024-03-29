@@ -212,7 +212,7 @@ internal sealed class ScreenshotService
                                 g.CopyFromScreen(left, top, 0, 0, bitmap.Size, CopyPixelOperation.SourceCopy);
                             }
 
-                            string savePath = Path.Combine(saveDirectory, "latest_screenshot.jpg");
+                            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
 
                             if (File.Exists(savePath))
                             {

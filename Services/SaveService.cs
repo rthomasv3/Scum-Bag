@@ -107,25 +107,32 @@ internal sealed class SaveService
 
             foreach (DirectoryInfo dir in dirs)
             {
-                string screenshot = null;
-                string screenshotPath = Path.Combine(dir.FullName, "Scum_Bag_Screenshot.jpg");
-
-                if (File.Exists(screenshotPath))
-                {
-                    byte[] screenshotData = File.ReadAllBytes(screenshotPath);
-                    screenshot = Convert.ToBase64String(screenshotData);
-                }
-
                 backups.Add(new Backup()
                 {
                     Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
-                    Screenshot = screenshot,
                     Directory = dir.FullName
                 });
             }
         }
 
         return backups.AsReadOnly();
+    }
+
+    public string GetScreenshot(string directory)
+    {
+        string screenshot = String.Empty;
+
+        if (!String.IsNullOrEmpty(directory))
+        {
+            string screenshotPath = Path.Combine(directory, _config.BackupScreenshotName);
+
+            if (File.Exists(screenshotPath))
+            {
+                screenshot = Convert.ToBase64String(File.ReadAllBytes(screenshotPath));
+            }
+        }
+
+        return screenshot;
     }
 
     public Guid CreateSave(SaveGame saveGame)
@@ -314,7 +321,7 @@ internal sealed class SaveService
             // Get the files in the source directory and copy to the destination directory
             foreach (FileInfo file in dir.GetFiles())
             {
-                if (file.Name != "Scum_Bag_Screenshot.jpg")
+                if (file.Name != _config.BackupScreenshotName)
                 {
                     string targetFilePath = Path.Combine(destinationDir, file.Name);
                     file.CopyTo(targetFilePath, true);

@@ -52,6 +52,12 @@ internal sealed class SaveGameCommands
     }
 
     [Command]
+    public string GetScreenshot(string directory)
+    {
+        return _saveService.GetScreenshot(directory);
+    }
+
+    [Command]
     public Guid CreateSave(SaveGame saveGame)
     {
         return _saveService.CreateSave(saveGame);
