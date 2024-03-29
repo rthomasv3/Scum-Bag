@@ -30,7 +30,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
 
     - run: npm install
@@ -66,8 +66,15 @@ jobs:
         path: .\bin\Release\net8.0\win-x64\publish\Scum Bag.exe
 
     - name: Archive Artifacts
-      if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'macos-latest'
+      if: matrix.platform == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
         name: Scum_Bag.exe
-        path: .\bin\Release\net8.0\win-x64\publish\Scum Bag
+        path: .\bin\Release\net8.0\linux-x64\publish\Scum Bag
+
+    - name: Archive Artifacts
+      if: matrix.platform == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: Scum_Bag.exe
+        path: .\bin\Release\net8.0\osx-x64\publish\Scum Bag
