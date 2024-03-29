@@ -69,12 +69,12 @@ jobs:
       if: matrix.platform == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Scum_Bag.exe
-        path: .\bin\Release\net8.0\linux-x64\publish\Scum Bag
+        name: Scum_Bag
+        path: ./bin/Release/net8.0/linux-x64/publish/Scum Bag
 
     - name: Archive Artifacts
       if: matrix.platform == 'macos-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Scum_Bag.exe
-        path: .\bin\Release\net8.0\osx-x64\publish\Scum Bag
+        name: Scum_Bag
+        path: ./bin/Release/net8.0/osx-x64/publish/Scum Bag
