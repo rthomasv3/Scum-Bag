@@ -78,11 +78,14 @@
         <div v-if="props.id !== 'new'" class=" mt-4 border-top-1 surface-border">
             <h2 class="">Backups</h2>
 
-            <div class="flex flex-column gap-2">
+            <div class="flex flex-column gap-2 ">
                 <div class="grid">
-                    <div class="col-fixed" style="width:275px; height:265px">
+                    <div class="col-fixed screenshot-col">
                         <div class="flex flex-wrap justify-content-center align-content-center border-round border-1 border-200 h-full w-full">
-                            <Image v-if="screenshot" :src="screenshot" alt="Image" width="250" preview />
+                            <div v-if="screenshot">
+                                <Image class="screenshot-small" :src="screenshot" width="250" alt="Image" preview />
+                                <Image class="screenshot-wide" :src="screenshot" height="235" alt="Image" preview />
+                            </div>
                             <div v-else>
                                 No Screenshot
                             </div>
@@ -90,12 +93,31 @@
                     </div>
 
                     <div class="col">
-                        <Listbox v-model="selectedBackup" :options="backups" listStyle="height:250px" emptyMessage="No Backups" @change="backupChanged">
+                        <Listbox v-model="selectedBackup" class="w-full" :options="backups" listStyle="height:250px" emptyMessage="No Backups" @change="backupChanged">
                             <template #option="slotProps">
-                                <div v-if="backupLocation" class="flex gap-3 backup-option align-items-center">
-                                    <div class="flex-grow-1">{{ new Date(slotProps.option.Time).toLocaleString() }}</div>
-                                    <Button class="backup-copy tiny-button" v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy" 
-                                            severity="secondary" text @click.stop="copyPath(slotProps.option.Directory)" />
+                                <div v-if="backupLocation" class="backup-option-wrapper">
+                                    <div class="gap-2 backup-option align-items-center">
+                                        <div>
+                                            <Button class="tiny-button"
+                                                    :icon="slotProps.option.IsFavorite ? 'pi pi-star-fill' : 'pi pi-star'"
+                                                    :plain="!slotProps.option.IsFavorite" text
+                                                    @click.stop="toggleBackupFavorite(slotProps.option)" 
+                                                    v-tooltip.left="{ value: 'Prevents Deletion', showDelay: 1500 }" />
+                                        </div>
+
+                                        <div class="backup-label">
+                                            <span>{{ new Date(slotProps.option.Time).toLocaleString() }}</span>
+                                            <span v-if="slotProps.option.Tag"> - {{ slotProps.option.Tag }}</span>
+                                        </div>
+                                        
+                                        <div>
+                                            <Button class="backup-copy tiny-button" v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy" 
+                                                    severity="secondary" text @click.stop="copyPath(slotProps.option.Directory)" />
+
+                                            <Button class="backup-copy tiny-button" v-tooltip.left="{ value: 'Options', showDelay: 1500 }" icon="pi pi-ellipsis-v" 
+                                                    severity="secondary" text @click.stop="showBackupDialog(slotProps.option)" />
+                                        </div>
+                                    </div>
                                 </div>
                             </template>
                         </Listbox>
@@ -113,12 +135,15 @@
                 </div>
             </div>
         </div>
+
+        <BackupDialog ref="backupDialog" :selectedBackup="selectedBackup" @saved="onBackupSaved" @deleted="onBackupDeleted" />
     </div>
 </template>
 
 <script setup>
+import BackupDialog from "./BackupDialog.vue";
 import { ref, computed, onBeforeMount, watch } from "vue";
-import { useToast } from 'primevue/usetoast';
+import { useToast } from "primevue/usetoast";
 import { useConfirm } from "primevue/useconfirm";
 
 const props = defineProps(["id"]);
@@ -140,6 +165,7 @@ const backups = ref([]);
 const selectedBackup = ref(null);
 const hasChanges = ref(false);
 const screenshot = ref(null);
+const backupDialog = ref();
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -150,6 +176,11 @@ const search = async (event) => {
     filteredGames.value = allGames.value.filter((game) => {
         return game.toLowerCase().indexOf(event.query.toLowerCase()) > -1;
     });
+}
+
+const showBackupDialog = (backup) => {
+    selectedBackup.value = backup;
+    backupDialog.value.show(backup);
 }
 
 onBeforeMount(async () => {
@@ -258,7 +289,11 @@ async function getBackups() {
 }
 
 async function backupChanged(e) {
-    const screenshotData = await galdrInvoke("getScreenshot", { directory: e.value.Directory });
+    var screenshotData = null
+
+    if (e.value) {
+        screenshotData = await galdrInvoke("getScreenshot", { directory: e.value.Directory });
+    }
 
     if (screenshotData) {
         screenshot.value = "data:image/jpg;base64," + screenshotData; 
@@ -384,6 +419,34 @@ function copyPath(path) {
         toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to copy path to clipboard', group: 'tr', life: 3000 });
     });
 }
+
+async function toggleBackupFavorite(backup) {
+    const saved = await galdrInvoke("updateMetadata", {
+        SaveId: backup.SaveId,
+        Directory: backup.Directory,
+        Tag: backup.Tag,
+        IsFavorite: !backup.IsFavorite
+    });
+
+    if (saved) {
+        backup.IsFavorite = !backup.IsFavorite;
+    }
+}
+
+function onBackupSaved(tag, isFavorite) {
+    selectedBackup.value.Tag = tag;
+    selectedBackup.value.IsFavorite =  isFavorite;
+}
+
+function onBackupDeleted(directory) {
+    const backup = backups.value.find(x => x.Directory === directory);
+    if (backup) {
+        const index = backups.value.indexOf(backup);
+        backups.value.splice(index, 1);
+        selectedBackup.value = null;
+        screenshot.value = null;
+    }
+}
 </script>
 
 <style scoped>
@@ -394,14 +457,61 @@ function copyPath(path) {
     overflow-x: hidden;
 }
 
+.backup-option-wrapper {
+    display: flex !important;
+    width: 100%;
+}
+
+.backup-option {
+    display: flex !important;
+    flex: 1 1 1px;
+    width: 100%;
+}
+
 .backup-option:not(:hover) .backup-copy {
     visibility: hidden;
+}
+
+.backup-label {
+    flex: 1 1 1px;
+    max-width: 100%;
+    overflow-x: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .tiny-button {
     font-size: 0.65rem;
     padding: 0.25rem;
     width: 2rem;
+}
+
+.screenshot-col {
+    width: 100%;
+    height: 265px;
+}
+
+.screenshot-small {
+    display: none;
+}
+
+.screenshot-wide {
+    display: block;
+}
+
+@media screen and (min-width: 1100px) {
+    .screenshot-col {
+        width: 275px;
+        height: 265px;
+    }
+
+    .screenshot-small {
+        display: block;
+    }
+
+    .screenshot-wide {
+        display: none;
+    }
 }
 </style>
 

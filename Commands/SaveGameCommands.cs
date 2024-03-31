@@ -88,6 +88,18 @@ internal sealed class SaveGameCommands
     }
 
     [Command]
+    public bool UpdateMetadata(Backup backup)
+    {
+        return _saveService.UpdateMetadata(backup.SaveId, backup.Directory, backup.Tag, backup.IsFavorite);
+    }
+
+    [Command]
+    public bool DeleteBackup(Backup backup)
+    {
+        return _saveService.DeleteBackup(backup.SaveId, backup.Directory);
+    }
+
+    [Command]
     public IEnumerable<string> GetGames()
     {
         return _gameService.GetInstalledGames();

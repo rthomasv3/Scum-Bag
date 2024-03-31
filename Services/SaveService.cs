@@ -97,21 +97,38 @@ internal sealed class SaveService
     {
         List<Backup> backups = new();
 
-        string path = Path.Combine(_config.DataDirectory, id.ToString());
+        SaveGame saveGame = GetSave(id);
 
-        DirectoryInfo parent = new(path);
-
-        if (parent.Exists)
+        if (saveGame != null)
         {
-            DirectoryInfo[] dirs = parent.GetDirectories();
+            string path = Path.Combine(_config.DataDirectory, id.ToString());
 
-            foreach (DirectoryInfo dir in dirs)
+            DirectoryInfo parent = new(path);
+
+            if (parent.Exists)
             {
-                backups.Add(new Backup()
+                DirectoryInfo[] dirs = parent.GetDirectories();
+
+                foreach (DirectoryInfo dir in dirs)
                 {
-                    Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
-                    Directory = dir.FullName
-                });
+                    string tag = null;
+                    bool isFavorite = false;
+
+                    if (saveGame.BackupMetadata.TryGetValue(dir.FullName, out BackupMetadata metadata))
+                    {
+                        tag = metadata.Tag;
+                        isFavorite = metadata.IsFavorite;
+                    }
+
+                    backups.Add(new Backup()
+                    {
+                        SaveId = saveGame.Id,
+                        Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
+                        Directory = dir.FullName,
+                        Tag = tag,
+                        IsFavorite = isFavorite
+                    });
+                }
             }
         }
 
@@ -265,6 +282,77 @@ internal sealed class SaveService
         }
 
         return restored;
+    }
+
+    public bool UpdateMetadata(Guid saveGameId, string directory, string tag, bool isFavorite)
+    {
+        bool updated = false;
+
+        if (Directory.Exists(directory))
+        {
+            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            
+            foreach (SaveGame saveGame in saveGames)
+            {
+                if (saveGameId == saveGame.Id)
+                {
+                    saveGame.BackupMetadata[directory] = new BackupMetadata()
+                    {
+                        Tag = tag,
+                        IsFavorite = isFavorite
+                    };
+                    updated = true;
+                    break;
+                }
+            }
+
+            if (updated)
+            {
+                string fileContent = JsonConvert.SerializeObject(saveGames);
+                File.WriteAllText(_config.SavesPath, fileContent);
+            }
+        }
+
+        return updated;
+    }
+
+    public bool DeleteBackup(Guid saveGameId, string directory)
+    {
+        bool deleted = false;
+
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, true);
+            DeleteMetadata(saveGameId, directory);
+            deleted = true;
+        }
+
+        return deleted;
+    }
+
+    public bool DeleteMetadata(Guid saveGameId, string directory)
+    {
+        bool deleted = false;
+
+        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+        
+        foreach (SaveGame saveGame in saveGames)
+        {
+            if (saveGameId == saveGame.Id)
+            {
+                saveGame.BackupMetadata.Remove(directory);
+                deleted = true;
+                break;
+            }
+        }
+
+        if (deleted)
+        {
+            string fileContent = JsonConvert.SerializeObject(saveGames);
+            File.WriteAllText(_config.SavesPath, fileContent);
+        }
+
+        return deleted;
     }
 
     #endregion

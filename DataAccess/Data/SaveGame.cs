@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Scum_Bag.DataAccess.Data;
 
@@ -14,4 +15,5 @@ internal sealed class SaveGame
     public int MaxBackups { get; init; }
     public string Game { get; init; }
     public string Icon { get; init; }
+    public Dictionary<string, BackupMetadata> BackupMetadata { get; init; } = new Dictionary<string, BackupMetadata>();
 }

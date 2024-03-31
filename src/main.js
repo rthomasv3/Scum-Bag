@@ -16,6 +16,9 @@ import AutoComplete from "primevue/autocomplete";
 import Listbox from "primevue/listbox";
 import InputSwitch from "primevue/inputswitch";
 import Image from "primevue/image";
+import Dialog from "primevue/dialog";
+import Checkbox from "primevue/checkbox";
+import ConfirmPopup from "primevue/confirmpopup";
 import "primeflex/primeflex.css";
 import "primeicons/primeicons.css";
 
@@ -38,5 +41,8 @@ app.component("AutoComplete", AutoComplete);
 app.component("Listbox", Listbox);
 app.component("InputSwitch", InputSwitch);
 app.component("Image", Image);
+app.component("Dialog", Dialog);
+app.component("Checkbox", Checkbox);
+app.component("ConfirmPopup", ConfirmPopup);
 
 app.mount("#app");

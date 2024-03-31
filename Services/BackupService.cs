@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Timers;
@@ -16,6 +17,7 @@ internal sealed class BackupService
 
     private readonly Config _config;
     private readonly EventService _eventService;
+    private readonly LoggingService _loggingService;
     private readonly Dictionary<Guid, Timer> _backupTimers = new();
     private readonly Dictionary<Guid, SaveGame> _saveGames = new();
 
@@ -23,10 +25,11 @@ internal sealed class BackupService
 
     #region Constructor
 
-    public BackupService(Config config, EventService eventService)
+    public BackupService(Config config, EventService eventService, LoggingService loggingService)
     {
         _config = config;
         _eventService = eventService;
+        _loggingService = loggingService;
 
         Initialize();
     }
@@ -157,7 +160,10 @@ internal sealed class BackupService
                         byte[] hashValue = mySHA256.ComputeHash(fileStream);
                         allHashes.AddRange(hashValue);
                     }
-                    catch { }
+                    catch (Exception e)
+                    {
+                        _loggingService.LogError($"Hash Error: {e}");
+                    }
                 }
             }
 
@@ -316,17 +322,31 @@ internal sealed class BackupService
                         File.Copy(screenShotPath, newScreenshotPath, true);
                     }
 
-                    // actual count is dirs length + 1 because a new backup was just made
-                    if (dirs.Length >= saveGame.MaxBackups)
+                    Dictionary<string, BackupMetadata> metadata = GetSaveMetadata(id);
+
+                    // actual count is dirs length + 1 because a new backup was just made,
+                    // and don't count any favorites toward the max backups
+                    int totalBackups = dirs.Length + 1 - metadata.Where(x => x.Value.IsFavorite).Count();
+
+                    while (totalBackups > saveGame.MaxBackups)
                     {
-                        // find and delete the oldest save backup
                         DirectoryInfo oldestDir = null;
 
                         foreach (DirectoryInfo dir in dirs)
                         {
-                            if (oldestDir == null || dir.CreationTime < oldestDir.CreationTime)
+                            bool isFavorite = false;
+
+                            if (metadata.TryGetValue(dir.FullName, out BackupMetadata backupMetadata))
                             {
-                                oldestDir = dir;
+                                isFavorite = backupMetadata.IsFavorite;
+                            }
+
+                            if (!isFavorite)
+                            {
+                                if (oldestDir == null || dir.CreationTime < oldestDir.CreationTime)
+                                {
+                                    oldestDir = dir;
+                                }
                             }
                         }
 
@@ -334,6 +354,8 @@ internal sealed class BackupService
                         {
                             oldestDir.Delete(true);
                         }
+
+                        totalBackups--;
                     }
 
                     backedUp = true;
@@ -343,6 +365,24 @@ internal sealed class BackupService
         }
 
         return backedUp;
+    }
+
+    private Dictionary<string, BackupMetadata> GetSaveMetadata(Guid id)
+    {
+        Dictionary<string, BackupMetadata> metadata = new();
+
+        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            
+        foreach (SaveGame saveGame in saveGames)
+        {
+            if (id == saveGame.Id)
+            {
+                metadata = saveGame.BackupMetadata;
+                break;
+            }
+        }
+
+        return metadata;
     }
 
     #endregion
