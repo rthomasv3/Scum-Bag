@@ -12,7 +12,7 @@ internal class Program
     {
         using Galdr.Galdr galdr = new GaldrBuilder()
             .SetTitle("Scum Bag")
-            .SetSize(1000, 775)
+            .SetSize(1100, 775)
             .SetMinSize(800, 600)
             .AddSingleton<Config>()
             .AddSingleton<SaveGameCommands>()
