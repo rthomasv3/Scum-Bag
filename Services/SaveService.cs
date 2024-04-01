@@ -15,19 +15,19 @@ internal sealed class SaveService
     private readonly Config _config;
     private readonly BackupService _backupService;
     private readonly ScreenshotService _screenshotService;
-    private readonly LoggingService _logger;
+    private readonly LoggingService _loggingService;
 
     #endregion
 
     #region Constructor
 
     public SaveService(Config config, BackupService backupService, ScreenshotService screenshotService,
-        LoggingService logger)
+        LoggingService loggingService)
     {
         _config = config;
         _backupService = backupService;
         _screenshotService = screenshotService;
-        _logger = logger;
+        _loggingService = loggingService;
     }
 
     #endregion
@@ -38,32 +38,39 @@ internal sealed class SaveService
     {
         List<TreeNode> saves = new();
 
-        if (File.Exists(_config.SavesPath))
+        try
         {
-            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
-            IEnumerable<IGrouping<string, SaveGame>> saveGroups = saveGames.GroupBy(x => String.IsNullOrEmpty(x.Game) ? "Game" : x.Game);
-
-            foreach(IGrouping<string, SaveGame> group in saveGroups)
+            if (File.Exists(_config.SavesPath))
             {
-                List<TreeNode> children = new();
+                IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+                IEnumerable<IGrouping<string, SaveGame>> saveGroups = saveGames.GroupBy(x => String.IsNullOrEmpty(x.Game) ? "Game" : x.Game);
 
-                foreach(SaveGame saveGame in group)
+                foreach(IGrouping<string, SaveGame> group in saveGroups)
                 {
-                    children.Add(new TreeNode()
+                    List<TreeNode> children = new();
+
+                    foreach(SaveGame saveGame in group)
                     {
-                        key = saveGame.Id.ToString(),
-                        label = saveGame.Name,
+                        children.Add(new TreeNode()
+                        {
+                            key = saveGame.Id.ToString(),
+                            label = saveGame.Name,
+                        });
+                    }
+
+                    saves.Add(new TreeNode()
+                    {
+                        key = group.Key,
+                        label = group.Key,
+                        type = "game",
+                        children = children
                     });
                 }
-
-                saves.Add(new TreeNode()
-                {
-                    key = group.Key,
-                    label = group.Key,
-                    type = "game",
-                    children = children
-                });
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(GetSaves)} - {e}");
         }
 
         return saves.AsReadOnly();
@@ -73,21 +80,28 @@ internal sealed class SaveService
     {
         SaveGame saveGame = null;
 
-        IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
-
-        foreach (SaveGame save in saveGames)
+        try
         {
-            if (save.Id == id)
+            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+
+            foreach (SaveGame save in saveGames)
             {
-                saveGame = save;
-
-                if (String.IsNullOrWhiteSpace(save.BackupLocation))
+                if (save.Id == id)
                 {
-                    save.BackupLocation = Path.Combine(_config.DataDirectory, save.Id.ToString());
-                }
+                    saveGame = save;
 
-                break;
+                    if (String.IsNullOrWhiteSpace(save.BackupLocation))
+                    {
+                        save.BackupLocation = Path.Combine(_config.DataDirectory, save.Id.ToString());
+                    }
+
+                    break;
+                }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(GetSave)} - {e}");
         }
 
         return saveGame;
@@ -97,39 +111,46 @@ internal sealed class SaveService
     {
         List<Backup> backups = new();
 
-        SaveGame saveGame = GetSave(id);
-
-        if (saveGame != null)
+        try
         {
-            string path = Path.Combine(_config.DataDirectory, id.ToString());
+            SaveGame saveGame = GetSave(id);
 
-            DirectoryInfo parent = new(path);
-
-            if (parent.Exists)
+            if (saveGame != null)
             {
-                DirectoryInfo[] dirs = parent.GetDirectories();
+                string path = Path.Combine(_config.DataDirectory, id.ToString());
 
-                foreach (DirectoryInfo dir in dirs)
+                DirectoryInfo parent = new(path);
+
+                if (parent.Exists)
                 {
-                    string tag = null;
-                    bool isFavorite = false;
+                    DirectoryInfo[] dirs = parent.GetDirectories();
 
-                    if (saveGame.BackupMetadata.TryGetValue(dir.FullName, out BackupMetadata metadata))
+                    foreach (DirectoryInfo dir in dirs)
                     {
-                        tag = metadata.Tag;
-                        isFavorite = metadata.IsFavorite;
+                        string tag = null;
+                        bool isFavorite = false;
+
+                        if (saveGame.BackupMetadata.TryGetValue(dir.FullName, out BackupMetadata metadata))
+                        {
+                            tag = metadata.Tag;
+                            isFavorite = metadata.IsFavorite;
+                        }
+
+                        backups.Add(new Backup()
+                        {
+                            SaveId = saveGame.Id,
+                            Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
+                            Directory = dir.FullName,
+                            Tag = tag,
+                            IsFavorite = isFavorite
+                        });
                     }
-
-                    backups.Add(new Backup()
-                    {
-                        SaveId = saveGame.Id,
-                        Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
-                        Directory = dir.FullName,
-                        Tag = tag,
-                        IsFavorite = isFavorite
-                    });
                 }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(GetBackups)} - {e}");
         }
 
         return backups.AsReadOnly();
@@ -139,14 +160,21 @@ internal sealed class SaveService
     {
         string screenshot = String.Empty;
 
-        if (!String.IsNullOrEmpty(directory))
+        try
         {
-            string screenshotPath = Path.Combine(directory, _config.BackupScreenshotName);
-
-            if (File.Exists(screenshotPath))
+            if (!String.IsNullOrEmpty(directory))
             {
-                screenshot = Convert.ToBase64String(File.ReadAllBytes(screenshotPath));
+                string screenshotPath = Path.Combine(directory, _config.BackupScreenshotName);
+
+                if (File.Exists(screenshotPath))
+                {
+                    screenshot = Convert.ToBase64String(File.ReadAllBytes(screenshotPath));
+                }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(GetScreenshot)} - {e}");
         }
 
         return screenshot;
@@ -154,28 +182,35 @@ internal sealed class SaveService
 
     public Guid CreateSave(SaveGame saveGame)
     {
-        if (!File.Exists(_config.SavesPath))
+        try
         {
-            File.WriteAllText(_config.SavesPath, "[]");
+            if (!File.Exists(_config.SavesPath))
+            {
+                File.WriteAllText(_config.SavesPath, "[]");
+            }
+            
+            saveGame.Id = Guid.NewGuid();
+            saveGame.BackupLocation = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
+
+            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+
+            if (saveGame.Enabled)
+            {
+                DisableDuplicates(saveGame.Id, saveGame.SaveLocation, ref saveGames);
+            }
+
+            saveGames.Add(saveGame);
+            string fileContent = JsonConvert.SerializeObject(saveGames);
+            File.WriteAllText(_config.SavesPath, fileContent);
+
+            _backupService.AddNewBackupTimer(saveGame);
+
+            _screenshotService.StartWatching(saveGame.Id, saveGame.SaveLocation, saveGame.Game);
         }
-        
-        saveGame.Id = Guid.NewGuid();
-        saveGame.BackupLocation = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
-
-        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
-
-        if (saveGame.Enabled)
+        catch (Exception e)
         {
-            DisableDuplicates(saveGame.Id, saveGame.SaveLocation, ref saveGames);
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(CreateSave)} - {e}");
         }
-
-        saveGames.Add(saveGame);
-        string fileContent = JsonConvert.SerializeObject(saveGames);
-        File.WriteAllText(_config.SavesPath, fileContent);
-        
-        _backupService.AddNewBackupTimer(saveGame);
-
-        _screenshotService.StartWatching(saveGame.Id, saveGame.SaveLocation, saveGame.Game);
 
         return saveGame.Id;
     }
@@ -184,29 +219,36 @@ internal sealed class SaveService
     {
         bool updated = false;
 
-        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
-
-        if (saveGame.Enabled)
+        try
         {
-            DisableDuplicates(saveGame.Id, saveGame.SaveLocation, ref saveGames);
-        }
+            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
 
-        for (int i = 0; i < saveGames.Count; ++i)
-        {
-            if (saveGames[i].Id == saveGame.Id)
+            if (saveGame.Enabled)
             {
-                saveGames[i] = saveGame;
-                updated = true;
-                break;
+                DisableDuplicates(saveGame.Id, saveGame.SaveLocation, ref saveGames);
             }
+
+            for (int i = 0; i < saveGames.Count; ++i)
+            {
+                if (saveGames[i].Id == saveGame.Id)
+                {
+                    saveGames[i] = saveGame;
+                    updated = true;
+                    break;
+                }
+            }
+
+            string fileContent = JsonConvert.SerializeObject(saveGames);
+            File.WriteAllText(_config.SavesPath, fileContent);
+
+            _backupService.UpdateSave(saveGame);
+
+            _screenshotService.StartWatching(saveGame.Id, saveGame.SaveLocation, saveGame.Game);
         }
-
-        string fileContent = JsonConvert.SerializeObject(saveGames);
-        File.WriteAllText(_config.SavesPath, fileContent);
-
-        _backupService.UpdateSave(saveGame);
-
-        _screenshotService.StartWatching(saveGame.Id, saveGame.SaveLocation, saveGame.Game);
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(UpdateSave)} - {e}");
+        }
 
         return updated;
     }
@@ -215,32 +257,39 @@ internal sealed class SaveService
     {
         bool deleted = false;
 
-        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
-
-        for (int i = 0; i < saveGames.Count; ++i)
+        try
         {
-            if (saveGames[i].Id == id)
+            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+
+            for (int i = 0; i < saveGames.Count; ++i)
             {
-                saveGames.RemoveAt(i);
-                deleted = true;
-                break;
+                if (saveGames[i].Id == id)
+                {
+                    saveGames.RemoveAt(i);
+                    deleted = true;
+                    break;
+                }
             }
+
+            string fileContent = JsonConvert.SerializeObject(saveGames);
+            File.WriteAllText(_config.SavesPath, fileContent);
+
+            _backupService.StopTimer(id);
+
+            string path = Path.Combine(_config.DataDirectory, id.ToString());
+            DirectoryInfo parent = new(path);
+
+            if (parent.Exists)
+            {
+                parent.Delete(true);
+            }
+
+            _screenshotService.StopWatching(id);
         }
-
-        string fileContent = JsonConvert.SerializeObject(saveGames);
-        File.WriteAllText(_config.SavesPath, fileContent);
-
-        _backupService.StopTimer(id);
-
-        string path = Path.Combine(_config.DataDirectory, id.ToString());
-        DirectoryInfo parent = new(path);
-
-        if (parent.Exists)
+        catch (Exception e)
         {
-            parent.Delete(true);
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(DeleteSave)} - {e}");
         }
-
-        _screenshotService.StopWatching(id);
 
         return deleted;
     }
@@ -278,7 +327,7 @@ internal sealed class SaveService
         }
         catch (Exception e)
         {
-            _logger.LogError(e.ToString());
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(RestoreSave)} - {e}");
         }
 
         return restored;
@@ -288,29 +337,36 @@ internal sealed class SaveService
     {
         bool updated = false;
 
-        if (Directory.Exists(directory))
+        try
         {
-            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
-            
-            foreach (SaveGame saveGame in saveGames)
+            if (Directory.Exists(directory))
             {
-                if (saveGameId == saveGame.Id)
+                List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+                
+                foreach (SaveGame saveGame in saveGames)
                 {
-                    saveGame.BackupMetadata[directory] = new BackupMetadata()
+                    if (saveGameId == saveGame.Id)
                     {
-                        Tag = tag,
-                        IsFavorite = isFavorite
-                    };
-                    updated = true;
-                    break;
+                        saveGame.BackupMetadata[directory] = new BackupMetadata()
+                        {
+                            Tag = tag,
+                            IsFavorite = isFavorite
+                        };
+                        updated = true;
+                        break;
+                    }
+                }
+
+                if (updated)
+                {
+                    string fileContent = JsonConvert.SerializeObject(saveGames);
+                    File.WriteAllText(_config.SavesPath, fileContent);
                 }
             }
-
-            if (updated)
-            {
-                string fileContent = JsonConvert.SerializeObject(saveGames);
-                File.WriteAllText(_config.SavesPath, fileContent);
-            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(UpdateMetadata)} - {e}");
         }
 
         return updated;
@@ -320,11 +376,18 @@ internal sealed class SaveService
     {
         bool deleted = false;
 
-        if (Directory.Exists(directory))
+        try
         {
-            Directory.Delete(directory, true);
-            DeleteMetadata(saveGameId, directory);
-            deleted = true;
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, true);
+                DeleteMetadata(saveGameId, directory);
+                deleted = true;
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(DeleteBackup)} - {e}");
         }
 
         return deleted;
@@ -334,22 +397,29 @@ internal sealed class SaveService
     {
         bool deleted = false;
 
-        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
-        
-        foreach (SaveGame saveGame in saveGames)
+        try
         {
-            if (saveGameId == saveGame.Id)
+            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            
+            foreach (SaveGame saveGame in saveGames)
             {
-                saveGame.BackupMetadata.Remove(directory);
-                deleted = true;
-                break;
+                if (saveGameId == saveGame.Id)
+                {
+                    saveGame.BackupMetadata.Remove(directory);
+                    deleted = true;
+                    break;
+                }
+            }
+
+            if (deleted)
+            {
+                string fileContent = JsonConvert.SerializeObject(saveGames);
+                File.WriteAllText(_config.SavesPath, fileContent);
             }
         }
-
-        if (deleted)
+        catch (Exception e)
         {
-            string fileContent = JsonConvert.SerializeObject(saveGames);
-            File.WriteAllText(_config.SavesPath, fileContent);
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(DeleteMetadata)} - {e}");
         }
 
         return deleted;
@@ -391,51 +461,59 @@ internal sealed class SaveService
 
     private void OverwriteDirectory(string sourceDir, string destinationDir, bool recursive = true)
     {
-        // Get information about the source directory
-        DirectoryInfo dir = new(sourceDir);
-
-        // Check if the source directory exists
-        if (dir.Exists)
+        try
         {
-            // Cache directories before we start copying
-            DirectoryInfo[] dirs = dir.GetDirectories();
+            DirectoryInfo dir = new(sourceDir);
 
-            // Create the destination directory
-            if (!Directory.Exists(destinationDir))
+            if (dir.Exists)
             {
-                Directory.CreateDirectory(destinationDir);
-            }
+                DirectoryInfo[] dirs = dir.GetDirectories();
 
-            // Get the files in the source directory and copy to the destination directory
-            foreach (FileInfo file in dir.GetFiles())
-            {
-                if (file.Name != _config.BackupScreenshotName)
+                if (!Directory.Exists(destinationDir))
                 {
-                    string targetFilePath = Path.Combine(destinationDir, file.Name);
-                    file.CopyTo(targetFilePath, true);
+                    Directory.CreateDirectory(destinationDir);
+                }
+
+                foreach (FileInfo file in dir.GetFiles())
+                {
+                    if (file.Name != _config.BackupScreenshotName)
+                    {
+                        string targetFilePath = Path.Combine(destinationDir, file.Name);
+                        file.CopyTo(targetFilePath, true);
+                    }
+                }
+
+                if (recursive)
+                {
+                    foreach (DirectoryInfo subDir in dirs)
+                    {
+                        string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
+                        OverwriteDirectory(subDir.FullName, newDestinationDir, true);
+                    }
                 }
             }
-
-            // If recursive and copying subdirectories, recursively call this method
-            if (recursive)
-            {
-                foreach (DirectoryInfo subDir in dirs)
-                {
-                    string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-                    OverwriteDirectory(subDir.FullName, newDestinationDir, true);
-                }
-            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(OverwriteDirectory)} - {e}");
         }
     }
 
     private void DisableDuplicates(Guid? currentId, string location, ref List<SaveGame> saveGames)
     {
-        foreach (SaveGame saveGame in saveGames)
+        try
         {
-            if (saveGame.Id != currentId.GetValueOrDefault() && saveGame.SaveLocation == location)
+            foreach (SaveGame saveGame in saveGames)
             {
-                saveGame.Enabled = false;
+                if (saveGame.Id != currentId.GetValueOrDefault() && saveGame.SaveLocation == location)
+                {
+                    saveGame.Enabled = false;
+                }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(SaveService)}>{nameof(DisableDuplicates)} - {e}");
         }
     }
     

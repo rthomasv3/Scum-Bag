@@ -19,7 +19,6 @@ internal sealed class BackupService
     private readonly EventService _eventService;
     private readonly LoggingService _loggingService;
     private readonly Dictionary<Guid, Timer> _backupTimers = new();
-    private readonly Dictionary<Guid, SaveGame> _saveGames = new();
 
     #endregion
 
@@ -41,32 +40,17 @@ internal sealed class BackupService
     public void AddNewBackupTimer(SaveGame saveGame)
     {
         CreateInitialBackup(saveGame);
-        _saveGames.Add(saveGame.Id, saveGame);
         AddTimer(saveGame);
-
         DisableDuplicates(saveGame.Id, saveGame.SaveLocation);
     }
 
     public void UpdateSave(SaveGame saveGame)
     {
-        if (_saveGames.ContainsKey(saveGame.Id))
-        {
-            lock (_saveGames)
-            {
-                _saveGames[saveGame.Id] = saveGame;
-            }
-        }
+        RemoveTimer(saveGame.Id);
 
-        if (_backupTimers.ContainsKey(saveGame.Id))
+        if (saveGame.Enabled)
         {
-            _backupTimers[saveGame.Id].Enabled = false;
-            _backupTimers[saveGame.Id].Dispose();
-            _backupTimers.Remove(saveGame.Id);
-
-            if (saveGame.Enabled)
-            {
-                AddTimer(saveGame);
-            }
+            AddTimer(saveGame);
         }
 
         DisableDuplicates(saveGame.Id, saveGame.SaveLocation);
@@ -74,12 +58,7 @@ internal sealed class BackupService
 
     public void StopTimer(Guid id)
     {
-        if (_backupTimers.ContainsKey(id))
-        {
-            _backupTimers[id].Enabled = false;
-            _backupTimers[id].Dispose();
-            _backupTimers.Remove(id);
-        }
+        RemoveTimer(id);
     }
 
     public bool CreateManualBackup(Guid id)
@@ -95,13 +74,12 @@ internal sealed class BackupService
     {
         if (File.Exists(_config.SavesPath))
         {
-            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            List<SaveGame> saveGames = GetSaveGames();
 
             foreach(SaveGame saveGame in saveGames)
             {
-                if (saveGame.Enabled && !_saveGames.ContainsKey(saveGame.Id))
+                if (saveGame.Enabled)
                 {
-                    _saveGames.Add(saveGame.Id, saveGame);
                     AddTimer(saveGame);
                 }
             }
@@ -114,23 +92,35 @@ internal sealed class BackupService
         timer.Elapsed += (sender, e) => HandleTimer(saveGame.Id);
         timer.AutoReset = true;
         timer.Enabled = true;
-        _backupTimers.Add(saveGame.Id, timer);
+
+        lock (_backupTimers)
+        {
+            _backupTimers.Add(saveGame.Id, timer);
+        }
+    }
+
+    private void RemoveTimer(Guid id)
+    {
+        lock(_backupTimers)
+        {
+            if (_backupTimers.ContainsKey(id))
+            {
+                _backupTimers[id].Enabled = false;
+                _backupTimers[id].Dispose();
+                _backupTimers.Remove(id);
+            }
+        }
     }
 
     private void DisableDuplicates(Guid id, string location)
     {
-        foreach (SaveGame saveGame in _saveGames.Values)
+        List<SaveGame> saveGames = GetSaveGames();
+
+        foreach (SaveGame saveGame in saveGames)
         {
             if (saveGame.Id != id && saveGame.SaveLocation == location)
             {
-                saveGame.Enabled = false;
-
-                if (_backupTimers.ContainsKey(saveGame.Id))
-                {
-                    _backupTimers[id].Enabled = false;
-                    _backupTimers[id].Dispose();
-                    _backupTimers.Remove(saveGame.Id);
-                }
+                RemoveTimer(saveGame.Id);
             }
         }
     }
@@ -162,7 +152,7 @@ internal sealed class BackupService
                     }
                     catch (Exception e)
                     {
-                        _loggingService.LogError($"Hash Error: {e}");
+                        _loggingService.LogError($"{nameof(BackupService)}>{nameof(GetHash)} - {e}");
                     }
                 }
             }
@@ -172,14 +162,16 @@ internal sealed class BackupService
         else if (File.Exists(path))
         {
             FileInfo fileInfo = new(path);
-            using FileStream fileStream = fileInfo.Open(FileMode.Open);
-
             try
             {
+                using FileStream fileStream = fileInfo.Open(FileMode.Open);
                 fileStream.Position = 0;
                 hashData = mySHA256.ComputeHash(fileStream);
             }
-            catch { }
+            catch (Exception e)
+            {
+                _loggingService.LogError($"{nameof(BackupService)}>{nameof(GetHash)} - {e}");
+            }
         }
 
         if (hashData != null)
@@ -197,58 +189,66 @@ internal sealed class BackupService
 
     private void CreateInitialBackup(SaveGame saveGame)
     {
-        string parentDirectory = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
+        try
+        {
+            string parentDirectory = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
 
-        if (!Directory.Exists(parentDirectory))
-        {
-            Directory.CreateDirectory(parentDirectory);
-        }
+            if (!Directory.Exists(parentDirectory))
+            {
+                Directory.CreateDirectory(parentDirectory);
+            }
 
-        string backupPath = Path.Combine(parentDirectory, DateTime.Now.Ticks.ToString());
-        
-        if (Directory.Exists(saveGame.SaveLocation))
-        {
-            CopyDirectory(saveGame.SaveLocation, backupPath);
+            string backupPath = Path.Combine(parentDirectory, DateTime.Now.Ticks.ToString());
+            
+            if (Directory.Exists(saveGame.SaveLocation))
+            {
+                CopyDirectory(saveGame.SaveLocation, backupPath);
+            }
+            else
+            {
+                Directory.CreateDirectory(backupPath);
+                FileInfo fileInfo = new(saveGame.SaveLocation);
+                string filePath = Path.Combine(backupPath, fileInfo.Name);
+                File.Copy(saveGame.SaveLocation, filePath);
+            }
         }
-        else
+        catch (Exception e)
         {
-            Directory.CreateDirectory(backupPath);
-            FileInfo fileInfo = new(saveGame.SaveLocation);
-            string filePath = Path.Combine(backupPath, fileInfo.Name);
-            File.Copy(saveGame.SaveLocation, filePath);
+            _loggingService.LogError($"{nameof(BackupService)}>{nameof(CreateInitialBackup)} - {e}");
         }
     }
 
     private void CopyDirectory(string sourceDir, string destinationDir, bool recursive = true)
     {
-        // Get information about the source directory
-        DirectoryInfo dir = new(sourceDir);
-
-        // Check if the source directory exists
-        if (dir.Exists)
+        try
         {
-            // Cache directories before we start copying
-            DirectoryInfo[] dirs = dir.GetDirectories();
+            DirectoryInfo dir = new(sourceDir);
 
-            // Create the destination directory
-            Directory.CreateDirectory(destinationDir);
-
-            // Get the files in the source directory and copy to the destination directory
-            foreach (FileInfo file in dir.GetFiles())
+            if (dir.Exists)
             {
-                string targetFilePath = Path.Combine(destinationDir, file.Name);
-                file.CopyTo(targetFilePath);
-            }
+                DirectoryInfo[] dirs = dir.GetDirectories();
 
-            // If recursive and copying subdirectories, recursively call this method
-            if (recursive)
-            {
-                foreach (DirectoryInfo subDir in dirs)
+                Directory.CreateDirectory(destinationDir);
+
+                foreach (FileInfo file in dir.GetFiles())
                 {
-                    string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-                    CopyDirectory(subDir.FullName, newDestinationDir, true);
+                    string targetFilePath = Path.Combine(destinationDir, file.Name);
+                    file.CopyTo(targetFilePath);
+                }
+
+                if (recursive)
+                {
+                    foreach (DirectoryInfo subDir in dirs)
+                    {
+                        string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
+                        CopyDirectory(subDir.FullName, newDestinationDir, true);
+                    }
                 }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(BackupService)}>{nameof(CopyDirectory)} - {e}");
         }
     }
 
@@ -261,128 +261,155 @@ internal sealed class BackupService
     {
         bool backedUp = false;
 
-        if (_saveGames.ContainsKey(id))
+        try
         {
-            SaveGame saveGame = _saveGames[id];
-            string parentDirectory = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
+            SaveGame saveGame = GetSaveGame(id);
 
-            if (!Directory.Exists(parentDirectory))
+            if (saveGame != null)
             {
-                Directory.CreateDirectory(parentDirectory);
-            }
-            
-            DirectoryInfo parentDir = new(parentDirectory);
-            DirectoryInfo newestDir = null;
-            DirectoryInfo[] dirs = parentDir.GetDirectories();
+                string parentDirectory = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
 
-            // find the latest backup
-            foreach (DirectoryInfo dir in dirs)
-            {
-                if (newestDir == null || dir.CreationTime > newestDir.CreationTime)
+                if (!Directory.Exists(parentDirectory))
                 {
-                    newestDir = dir;
+                    Directory.CreateDirectory(parentDirectory);
                 }
-            }
+                
+                DirectoryInfo parentDir = new(parentDirectory);
+                DirectoryInfo newestDir = null;
+                DirectoryInfo[] dirs = parentDir.GetDirectories();
 
-            string lastBackupPath = newestDir.FullName;
-            string lastBackupLocation = lastBackupPath;
-
-            if (File.Exists(saveGame.SaveLocation))
-            {
-                FileInfo fileInfo = new(saveGame.SaveLocation);
-                lastBackupLocation = Path.Combine(lastBackupPath, fileInfo.Name);
-            }
-
-            if (Directory.Exists(lastBackupPath))
-            {
-                string lastBackupHash = GetHash(lastBackupLocation);
-                string currentHash = GetHash(saveGame.SaveLocation);
-
-                if (lastBackupHash != currentHash)
+                // find the latest backup
+                foreach (DirectoryInfo dir in dirs)
                 {
-                    string backupPath = Path.Combine(parentDirectory, DateTime.Now.Ticks.ToString());
-
-                    if (Directory.Exists(saveGame.SaveLocation))
+                    if (newestDir == null || dir.CreationTime > newestDir.CreationTime)
                     {
-                        CopyDirectory(saveGame.SaveLocation, backupPath);
+                        newestDir = dir;
                     }
-                    else
+                }
+
+                string lastBackupPath = newestDir.FullName;
+                string lastBackupLocation = lastBackupPath;
+
+                if (File.Exists(saveGame.SaveLocation))
+                {
+                    FileInfo fileInfo = new(saveGame.SaveLocation);
+                    lastBackupLocation = Path.Combine(lastBackupPath, fileInfo.Name);
+                }
+
+                if (Directory.Exists(lastBackupPath))
+                {
+                    string lastBackupHash = GetHash(lastBackupLocation);
+                    string currentHash = GetHash(saveGame.SaveLocation);
+
+                    if (lastBackupHash != currentHash)
                     {
-                        Directory.CreateDirectory(backupPath);
-                        FileInfo fileInfo = new(saveGame.SaveLocation);
-                        string filePath = Path.Combine(backupPath, fileInfo.Name);
-                        File.Copy(saveGame.SaveLocation, filePath);
-                    }
+                        string backupPath = Path.Combine(parentDirectory, DateTime.Now.Ticks.ToString());
 
-                    string screenShotPath = Path.Combine(parentDirectory, _config.LatestScreenshotName);
-
-                    if (File.Exists(screenShotPath))
-                    {
-                        string newScreenshotPath = Path.Combine(backupPath, _config.BackupScreenshotName);
-                        File.Copy(screenShotPath, newScreenshotPath, true);
-                    }
-
-                    Dictionary<string, BackupMetadata> metadata = GetSaveMetadata(id);
-
-                    // actual count is dirs length + 1 because a new backup was just made,
-                    // and don't count any favorites toward the max backups
-                    int totalBackups = dirs.Length + 1 - metadata.Where(x => x.Value.IsFavorite).Count();
-
-                    while (totalBackups > saveGame.MaxBackups)
-                    {
-                        DirectoryInfo oldestDir = null;
-
-                        foreach (DirectoryInfo dir in dirs)
+                        if (Directory.Exists(saveGame.SaveLocation))
                         {
-                            bool isFavorite = false;
+                            CopyDirectory(saveGame.SaveLocation, backupPath);
+                        }
+                        else
+                        {
+                            Directory.CreateDirectory(backupPath);
+                            FileInfo fileInfo = new(saveGame.SaveLocation);
+                            string filePath = Path.Combine(backupPath, fileInfo.Name);
+                            File.Copy(saveGame.SaveLocation, filePath);
+                        }
 
-                            if (metadata.TryGetValue(dir.FullName, out BackupMetadata backupMetadata))
-                            {
-                                isFavorite = backupMetadata.IsFavorite;
-                            }
+                        string screenShotPath = Path.Combine(parentDirectory, _config.LatestScreenshotName);
 
-                            if (!isFavorite)
+                        if (File.Exists(screenShotPath))
+                        {
+                            string newScreenshotPath = Path.Combine(backupPath, _config.BackupScreenshotName);
+                            File.Copy(screenShotPath, newScreenshotPath, true);
+                        }
+
+                        Dictionary<string, BackupMetadata> metadata = saveGame.BackupMetadata;
+
+                        // actual count is dirs length + 1 because a new backup was just made,
+                        // and don't count any favorites toward the max backups
+                        int totalBackups = dirs.Length + 1 - metadata.Where(x => x.Value.IsFavorite).Count();
+
+                        while (totalBackups > saveGame.MaxBackups)
+                        {
+                            DirectoryInfo oldestDir = null;
+
+                            foreach (DirectoryInfo dir in dirs)
                             {
-                                if (oldestDir == null || dir.CreationTime < oldestDir.CreationTime)
+                                bool isFavorite = false;
+
+                                if (metadata.TryGetValue(dir.FullName, out BackupMetadata backupMetadata))
                                 {
-                                    oldestDir = dir;
+                                    isFavorite = backupMetadata.IsFavorite;
+                                }
+
+                                if (!isFavorite)
+                                {
+                                    if (oldestDir == null || dir.CreationTime < oldestDir.CreationTime)
+                                    {
+                                        oldestDir = dir;
+                                    }
                                 }
                             }
+
+                            oldestDir?.Delete(true);
+                            totalBackups--;
                         }
 
-                        if (oldestDir != null)
-                        {
-                            oldestDir.Delete(true);
-                        }
-
-                        totalBackups--;
+                        backedUp = true;
+                        _eventService.PublishEvent("saveUpdated", new { Id = id });
                     }
-
-                    backedUp = true;
-                    _eventService.PublishEvent("saveUpdated", new { Id = id });
                 }
             }
+        }
+        catch(Exception e)
+        {
+            _loggingService.LogError($"{nameof(BackupService)}>{nameof(CreateBackup)} - {e}");
         }
 
         return backedUp;
     }
 
-    private Dictionary<string, BackupMetadata> GetSaveMetadata(Guid id)
+    private List<SaveGame> GetSaveGames()
     {
-        Dictionary<string, BackupMetadata> metadata = new();
+        List<SaveGame> saveGames = new();
 
-        List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
-            
-        foreach (SaveGame saveGame in saveGames)
+        try
         {
-            if (id == saveGame.Id)
-            {
-                metadata = saveGame.BackupMetadata;
-                break;
-            }
+            saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(BackupService)}>{nameof(GetSaveGames)} - {e}");
         }
 
-        return metadata;
+        return saveGames;
+    }
+
+    private SaveGame GetSaveGame(Guid id)
+    {
+        SaveGame save = null;
+
+        try
+        {
+            List<SaveGame> saveGames = GetSaveGames();
+
+            foreach (SaveGame saveGame in saveGames)
+            {
+                if (saveGame.Id == id)
+                {
+                    save = saveGame;
+                    break;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(BackupService)}>{nameof(GetSaveGame)} - {e}");
+        }
+
+        return save;
     }
 
     #endregion

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -14,6 +15,7 @@ internal sealed class GameService
 
     private static readonly HashSet<string> _blackList = ["Steamworks Common Redistributables"];
 
+    private readonly LoggingService _loggingService;
     private readonly string _steamExePath;
     private readonly string _libraryPath;
     private readonly VdfDeserializer _deserializer;
@@ -22,8 +24,10 @@ internal sealed class GameService
 
     #region Constructor
 
-    public GameService()
+    public GameService(LoggingService loggingService)
     {
+        _loggingService = loggingService;
+        
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             _steamExePath = Registry.CurrentUser.OpenSubKey("Software\\Valve\\Steam").GetValue("SteamExe").ToString();
@@ -36,6 +40,8 @@ internal sealed class GameService
         _libraryPath = Path.Combine(Path.Combine(Path.GetDirectoryName(_steamExePath), "steamapps"), "libraryfolders.vdf");
 
         _deserializer = new();
+
+        LogSteamLibrary();
     }
 
     #endregion
@@ -46,27 +52,34 @@ internal sealed class GameService
     {
         List<string> games = new();
 
-        FileStream libraryStream = File.OpenRead(_libraryPath);
-        Library library = _deserializer.Deserialize<Library>(libraryStream);
-
-        foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
+        try
         {
-            string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
+            FileStream libraryStream = File.OpenRead(_libraryPath);
+            Library library = _deserializer.Deserialize<Library>(libraryStream);
 
-            foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+            foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
             {
-                try
-                {
-                    FileStream fileStream = File.OpenRead(file);
-                    App app = _deserializer.Deserialize<App>(fileStream);
+                string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
 
-                    if (!_blackList.Contains(app.AppState.Name))
+                foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+                {
+                    try
                     {
-                        games.Add(ConvertToAscii(app.AppState.Name));
+                        FileStream fileStream = File.OpenRead(file);
+                        App app = _deserializer.Deserialize<App>(fileStream);
+
+                        if (!_blackList.Contains(app.AppState.Name))
+                        {
+                            games.Add(ConvertToAscii(app.AppState.Name));
+                        }
                     }
+                    catch { }
                 }
-                catch { }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(GameService)}>{nameof(GetInstalledGames)} - {e}");
         }
         
         return games.AsReadOnly();
@@ -76,31 +89,38 @@ internal sealed class GameService
     {
         List<AppState> games = new();
 
-        FileStream libraryStream = File.OpenRead(_libraryPath);
-        Library library = _deserializer.Deserialize<Library>(libraryStream);
-
-        foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
+        try
         {
-            string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
+            FileStream libraryStream = File.OpenRead(_libraryPath);
+            Library library = _deserializer.Deserialize<Library>(libraryStream);
 
-            foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+            foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
             {
-                try
-                {
-                    FileStream fileStream = File.OpenRead(file);
-                    App app = _deserializer.Deserialize<App>(fileStream);
-                    app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
-                    app.AppState.Name = ConvertToAscii(app.AppState.Name);
+                string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
 
-                    if (!_blackList.Contains(app.AppState.Name))
+                foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+                {
+                    try
                     {
-                        games.Add(app.AppState);
+                        FileStream fileStream = File.OpenRead(file);
+                        App app = _deserializer.Deserialize<App>(fileStream);
+                        app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
+                        app.AppState.Name = ConvertToAscii(app.AppState.Name);
+
+                        if (!_blackList.Contains(app.AppState.Name))
+                        {
+                            games.Add(app.AppState);
+                        }
                     }
+                    catch { }
                 }
-                catch { }
             }
         }
-        
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(GameService)}>{nameof(GetInstalledApps)} - {e}");
+        }
+
         return games.AsReadOnly();
     }
 
@@ -113,6 +133,47 @@ internal sealed class GameService
         string cleanedText = text.Replace('’','\'').Replace('–', '-').Replace('“', '"').Replace('”', '"').Replace("…", "...").Replace("—", "--").Replace("™", "");
         byte[] textData = Encoding.Convert(Encoding.Default, Encoding.ASCII, Encoding.Default.GetBytes(cleanedText));
         return Encoding.ASCII.GetString(textData);
+    }
+
+    private void LogSteamLibrary()
+    {
+        try
+        {
+            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam Path: {_steamExePath}");
+            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam Libraries Path: {_libraryPath}");
+
+            FileStream libraryStream = File.OpenRead(_libraryPath);
+            Library library = _deserializer.Deserialize<Library>(libraryStream);
+
+            foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
+            {
+                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam Library Found: {libraryFolder.Path}");
+
+                string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
+
+                foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+                {
+                    try
+                    {
+                        FileStream fileStream = File.OpenRead(file);
+                        App app = _deserializer.Deserialize<App>(fileStream);
+
+                        if (!_blackList.Contains(app.AppState.Name))
+                        {
+                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Found: {ConvertToAscii(app.AppState.Name)}");
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _loggingService.LogError($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - {e}");
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - {e}");
+        }
     }
 
     #endregion

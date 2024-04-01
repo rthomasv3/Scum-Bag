@@ -43,21 +43,24 @@ internal sealed class ScreenshotService
     #endregion
 
     #region Fields
+
     private static readonly int _headerHeight = 32;
     private static readonly int _shadowSize = 7;
 
     private readonly Config _config;
     private readonly GameService _gameService;
+    private readonly LoggingService _loggingService;
     private readonly Dictionary<string, WatchLocation> _watchers;
 
     #endregion
 
     #region Constructor
 
-    public ScreenshotService(Config config, GameService gameService)
+    public ScreenshotService(Config config, GameService gameService, LoggingService loggingService)
     {
         _config = config;
         _gameService = gameService;
+        _loggingService = loggingService;
         _watchers = new();
 
         Initialize();
@@ -69,33 +72,43 @@ internal sealed class ScreenshotService
 
     public void StartWatching(Guid saveGameId, string location, string game)
     {
-        if (!String.IsNullOrWhiteSpace(location) && !String.IsNullOrWhiteSpace(game))
+        try
         {
-            RemoveExistingWatcher(saveGameId);
-
-            IEnumerable<AppState> games = _gameService.GetInstalledApps();
-            AppState app = games.FirstOrDefault(x => x.Name == game);
-
-            if (app != null)
+            if (!String.IsNullOrWhiteSpace(location) && !String.IsNullOrWhiteSpace(game))
             {
-                string directory = Path.GetDirectoryName(location);
+                RemoveExistingWatcher(saveGameId);
 
-                FileSystemWatcher watcher = new(directory)
-                {
-                    NotifyFilter = NotifyFilters.LastWrite,
-                    IncludeSubdirectories = true
-                };
-                watcher.Changed += OnChanged;
-                watcher.EnableRaisingEvents = true;
+                IEnumerable<AppState> games = _gameService.GetInstalledApps();
+                AppState app = games.FirstOrDefault(x => x.Name == game);
 
-                _watchers.Add(directory, new WatchLocation()
+                if (app != null)
                 {
-                    Watcher = watcher,
-                    SaveGameId = saveGameId,
-                    Location = location,
-                    GameDirectory = app.FullInstallDir
-                });
+                    string directory = Path.GetDirectoryName(location);
+
+                    FileSystemWatcher watcher = new(directory)
+                    {
+                        NotifyFilter = NotifyFilters.LastWrite,
+                        IncludeSubdirectories = true
+                    };
+                    watcher.Changed += OnChanged;
+                    watcher.EnableRaisingEvents = true;
+
+                    lock (_watchers)
+                    {
+                        _watchers.Add(directory, new WatchLocation()
+                        {
+                            Watcher = watcher,
+                            SaveGameId = saveGameId,
+                            Location = location,
+                            GameDirectory = app.FullInstallDir
+                        });
+                    }
+                }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(StartWatching)} - {e}");
         }
     }
 
@@ -110,45 +123,68 @@ internal sealed class ScreenshotService
 
     private void Initialize()
     {
-        if (File.Exists(_config.SavesPath))
+        try
         {
-            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
-
-            foreach(SaveGame saveGame in saveGames)
+            if (File.Exists(_config.SavesPath))
             {
-                if (saveGame.Enabled && !String.IsNullOrWhiteSpace(saveGame.Game))
+                IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+
+                foreach(SaveGame saveGame in saveGames)
                 {
-                    StartWatching(saveGame.Id, saveGame.SaveLocation, saveGame.Game);
+                    if (saveGame.Enabled && !String.IsNullOrWhiteSpace(saveGame.Game))
+                    {
+                        StartWatching(saveGame.Id, saveGame.SaveLocation, saveGame.Game);
+                    }
                 }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(Initialize)} - {e}");
         }
     }
 
     private void RemoveExistingWatcher(Guid saveGameId)
     {
-        KeyValuePair<string, WatchLocation> watcher = _watchers.FirstOrDefault(x => x.Value.SaveGameId == saveGameId);
-
-        if (watcher.Value != null)
+        try
         {
-            watcher.Value.Watcher.EnableRaisingEvents = false;
-            watcher.Value.Watcher.Changed -= OnChanged;
-            watcher.Value.Watcher.Dispose();
-            _watchers.Remove(watcher.Key);
+            lock (_watchers)
+            {
+                KeyValuePair<string, WatchLocation> watcher = _watchers.FirstOrDefault(x => x.Value.SaveGameId == saveGameId);
+
+                if (watcher.Value != null)
+                {
+                    watcher.Value.Watcher.EnableRaisingEvents = false;
+                    watcher.Value.Watcher.Changed -= OnChanged;
+                    watcher.Value.Watcher.Dispose();
+                    _watchers.Remove(watcher.Key);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(RemoveExistingWatcher)} - {e}");
         }
     }
 
-    private void OnChanged(object sender, FileSystemEventArgs e)
+    private void OnChanged(object sender, FileSystemEventArgs args)
     {
-        if (!String.IsNullOrEmpty(e.FullPath) && !String.IsNullOrWhiteSpace(e.Name))
+        try
         {
-            string directory = e.FullPath.Replace(e.Name, "").TrimEnd('/', '\\');
-            
-            if (_watchers.ContainsKey(directory))
+            if (!String.IsNullOrEmpty(args.FullPath) && !String.IsNullOrWhiteSpace(args.Name))
             {
-                WatchLocation watchLocation = _watchers[directory];
-                string saveDirectory = Path.Combine(_config.DataDirectory, watchLocation.SaveGameId.ToString());
-                TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
+                string directory = args.FullPath.Replace(args.Name, "").TrimEnd('/', '\\');
+                
+                if (_watchers.TryGetValue(directory, out WatchLocation watchLocation))
+                {
+                    string saveDirectory = Path.Combine(_config.DataDirectory, watchLocation.SaveGameId.ToString());
+                    TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
+                }
             }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(OnChanged)} - {e}");
         }
     }
 
@@ -160,37 +196,10 @@ internal sealed class ScreenshotService
             {
                 if (Directory.Exists(gameDirectory))
                 {
-                    Process gameProcess = null;
-
-                    IEnumerable<string> files = Directory
-                        .GetFiles(gameDirectory, "*.*", SearchOption.AllDirectories)
-                        .Select(x => Path.GetFileName(x))
-                        .Distinct();
-                    HashSet<string> fileSet = new(files);
-
-                    Process[] processes = Process.GetProcesses();
-
-                    foreach (Process process in processes)
-                    {
-                        string fullPath = null;
-
-                        try
-                        {
-                            fullPath =  Path.GetFileName(process.MainModule?.FileName);
-                        }
-                        catch{ }
-
-                        if (!String.IsNullOrWhiteSpace(fullPath) && fileSet.Contains(fullPath))
-                        {
-                            gameProcess = process;
-                            break;
-                        }
-                    }
+                    Process gameProcess = GetGameProcess(gameDirectory);
 
                     if (gameProcess != null)
                     {
-                        Debug.WriteLine("Taking screenshot...");
-
                         RECT rectangle = GetWindowRect(gameProcess.MainWindowHandle);
 
                         if (rectangle.Width > 0 && rectangle.Height > 0)
@@ -203,8 +212,6 @@ internal sealed class ScreenshotService
                             int top = rectangle.Top + (removeWindowBorder ? _headerHeight : 0);
 
                             Bitmap bitmap = new Bitmap(width, height);
-
-                            Debug.WriteLine($"Left: {rectangle.Left} ({left}), Top: {rectangle.Top} ({top}), Right: {rectangle.Right}, Width: {width}, Height: {height}");
 
                             using (Graphics g = Graphics.FromImage(bitmap))
                             {
@@ -227,7 +234,7 @@ internal sealed class ScreenshotService
         }
         catch (Exception e)
         {
-            Debug.WriteLine(e.ToString());
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - {e}");
         }
     }
 
@@ -246,10 +253,67 @@ internal sealed class ScreenshotService
                 break;
             }
 
-            Thread.Sleep(100);
+            Thread.Sleep(50);
         }
 
         return rectangle;
+    }
+
+    private HashSet<string> GetExecutables(string directory)
+    {
+        HashSet<string> fileSet = new();
+
+        try
+        {
+            if (Directory.Exists(directory))
+            {
+                IEnumerable<string> files = Directory
+                    .GetFiles(directory, "*.*", SearchOption.AllDirectories)
+                    .Select(x => Path.GetFileName(x))
+                    .Where(x =>
+                    {
+                        string ext = Path.GetExtension(x);
+                        return String.IsNullOrWhiteSpace(ext) ||
+                            String.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .Distinct();
+
+                fileSet = new(files);
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(GetExecutables)} - {e}");
+        }
+
+        return fileSet;
+    }
+
+    private Process GetGameProcess(string directory)
+    {
+        Process gameProcess = null;
+
+        HashSet<string> executables = GetExecutables(directory);
+
+        foreach (Process process in Process.GetProcesses())
+        {
+            
+            try
+            {
+                string test = Path.GetFileName(process.ProcessName);
+
+                string fullPath =  Path.GetFileName(process.MainModule?.FileName);
+
+                if (!String.IsNullOrWhiteSpace(fullPath) && executables.Contains(fullPath))
+                {
+                    gameProcess = process;
+                    break;
+                }
+            }
+            catch { /* Empty because tons of processes always throw errors when checking module */ }
+        }
+
+        return gameProcess;
     }
 
     #endregion
