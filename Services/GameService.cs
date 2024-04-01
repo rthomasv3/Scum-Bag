@@ -27,7 +27,7 @@ internal sealed class GameService
     public GameService(LoggingService loggingService)
     {
         _loggingService = loggingService;
-        
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             _steamExePath = Registry.CurrentUser.OpenSubKey("Software\\Valve\\Steam").GetValue("SteamExe").ToString();
@@ -153,6 +153,8 @@ internal sealed class GameService
 
                 foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
                 {
+                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Entry Found: {file}");
+
                     try
                     {
                         FileStream fileStream = File.OpenRead(file);
@@ -161,6 +163,10 @@ internal sealed class GameService
                         if (!_blackList.Contains(app.AppState.Name))
                         {
                             _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Found: {ConvertToAscii(app.AppState.Name)}");
+                        }
+                        else
+                        {
+                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Skipped: {app.AppState.Name}"); 
                         }
                     }
                     catch (Exception e)

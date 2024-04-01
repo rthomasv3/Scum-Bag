@@ -297,11 +297,8 @@ internal sealed class ScreenshotService
 
         foreach (Process process in Process.GetProcesses())
         {
-            
             try
             {
-                string test = Path.GetFileName(process.ProcessName);
-
                 string fullPath =  Path.GetFileName(process.MainModule?.FileName);
 
                 if (!String.IsNullOrWhiteSpace(fullPath) && executables.Contains(fullPath))
