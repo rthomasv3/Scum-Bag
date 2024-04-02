@@ -1,15 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Timers;
 using Microsoft.Win32;
 using Scum_Bag.DataAccess.Data.Steam;
 using VdfParser;
 
 namespace Scum_Bag.Services;
 
-internal sealed class GameService
+internal sealed class GameService : IDisposable
 {
     #region Fields
 
@@ -19,6 +21,8 @@ internal sealed class GameService
     private readonly string _steamExePath;
     private readonly string _libraryPath;
     private readonly VdfDeserializer _deserializer;
+    private readonly Timer _steamLibraryTimer;
+    private List<AppState> _steamApps;
 
     #endregion
 
@@ -40,8 +44,14 @@ internal sealed class GameService
         _libraryPath = Path.Combine(Path.Combine(Path.GetDirectoryName(_steamExePath), "steamapps"), "libraryfolders.vdf");
 
         _deserializer = new();
+        _steamApps = new();
 
-        LogSteamLibrary();
+        _steamLibraryTimer = new Timer(TimeSpan.FromMinutes(1));
+        _steamLibraryTimer.Elapsed += SteamLibraryTimer_Elapsed;
+        _steamLibraryTimer.AutoReset = true;
+        _steamLibraryTimer.Enabled = true;
+
+        UpdateSteamLibrary(true);
     }
 
     #endregion
@@ -50,136 +60,108 @@ internal sealed class GameService
 
     public IEnumerable<string> GetInstalledGames()
     {
-        List<string> games = new();
-
-        try
-        {
-            FileStream libraryStream = File.OpenRead(_libraryPath);
-            Library library = _deserializer.Deserialize<Library>(libraryStream);
-
-            foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
-            {
-                string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
-
-                foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
-                {
-                    try
-                    {
-                        FileStream fileStream = File.OpenRead(file);
-                        App app = _deserializer.Deserialize<App>(fileStream);
-
-                        if (!_blackList.Contains(app.AppState.Name))
-                        {
-                            games.Add(ConvertToAscii(app.AppState.Name));
-                        }
-                    }
-                    catch { }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            _loggingService.LogError($"{nameof(GameService)}>{nameof(GetInstalledGames)} - {e}");
-        }
-        
-        return games.AsReadOnly();
+        return _steamApps.Select(x => x.Name);
     }
 
     public IEnumerable<AppState> GetInstalledApps()
     {
-        List<AppState> games = new();
+        return _steamApps.AsReadOnly();
+    }
 
-        try
-        {
-            FileStream libraryStream = File.OpenRead(_libraryPath);
-            Library library = _deserializer.Deserialize<Library>(libraryStream);
-
-            foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
-            {
-                string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
-
-                foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
-                {
-                    try
-                    {
-                        FileStream fileStream = File.OpenRead(file);
-                        App app = _deserializer.Deserialize<App>(fileStream);
-                        app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
-                        app.AppState.Name = ConvertToAscii(app.AppState.Name);
-
-                        if (!_blackList.Contains(app.AppState.Name))
-                        {
-                            games.Add(app.AppState);
-                        }
-                    }
-                    catch { }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            _loggingService.LogError($"{nameof(GameService)}>{nameof(GetInstalledApps)} - {e}");
-        }
-
-        return games.AsReadOnly();
+    public void Dispose()
+    {
+        _steamLibraryTimer.Enabled = false;
+        _steamLibraryTimer.Elapsed -= SteamLibraryTimer_Elapsed;
+        _steamLibraryTimer.Dispose();
     }
 
     #endregion
 
     #region Private Methods
 
-    public string ConvertToAscii(string text)
+    private void SteamLibraryTimer_Elapsed(object sender, ElapsedEventArgs e)
     {
-        string cleanedText = text.Replace('’','\'').Replace('–', '-').Replace('“', '"').Replace('”', '"').Replace("…", "...").Replace("—", "--").Replace("™", "");
-        byte[] textData = Encoding.Convert(Encoding.Default, Encoding.ASCII, Encoding.Default.GetBytes(cleanedText));
-        return Encoding.ASCII.GetString(textData);
+        UpdateSteamLibrary();
     }
 
-    private void LogSteamLibrary()
+    private void UpdateSteamLibrary(bool logInfo = false)
     {
         try
         {
-            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam Path: {_steamExePath}");
-            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam Libraries Path: {_libraryPath}");
-
-            FileStream libraryStream = File.OpenRead(_libraryPath);
-            Library library = _deserializer.Deserialize<Library>(libraryStream);
-
-            foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
+            lock (_steamApps)
             {
-                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam Library Found: {libraryFolder.Path}");
+                _steamApps.Clear();
 
-                string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
-
-                foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+                if (logInfo)
                 {
-                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Entry Found: {file}");
+                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Path: {_steamExePath}");
+                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Libraries Path: {_libraryPath}");
+                }
 
-                    try
+                FileStream libraryStream = File.OpenRead(_libraryPath);
+                Library library = _deserializer.Deserialize<Library>(libraryStream);
+
+                foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
+                {
+                    if (logInfo)
                     {
-                        FileStream fileStream = File.OpenRead(file);
-                        App app = _deserializer.Deserialize<App>(fileStream);
+                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Found: {libraryFolder.Path}");
+                    }
 
-                        if (!_blackList.Contains(app.AppState.Name))
+                    string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
+
+                    foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+                    {
+                        if (logInfo)
                         {
-                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Found: {ConvertToAscii(app.AppState.Name)}");
+                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Entry Found: {file}");
                         }
-                        else
+
+                        try
                         {
-                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - Steam App Skipped: {app.AppState.Name}"); 
+                            FileStream fileStream = File.OpenRead(file);
+                            App app = _deserializer.Deserialize<App>(fileStream);
+                            app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
+
+                            if (!_blackList.Contains(app.AppState.Name))
+                            {
+                                app.AppState.Name = ConvertToAscii(app.AppState.Name);
+                                _steamApps.Add(app.AppState);
+
+                                if (logInfo)
+                                {
+                                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
+                                }
+                            }
+                            else if (logInfo)
+                            {
+                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}"); 
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - {e}");
                         }
                     }
-                    catch (Exception e)
-                    {
-                        _loggingService.LogError($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - {e}");
-                    }
+                }
+
+                if (logInfo)
+                {
+                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Done");
                 }
             }
         }
         catch (Exception e)
         {
-            _loggingService.LogError($"{nameof(GameService)}>{nameof(LogSteamLibrary)} - {e}");
+            _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - {e}");
         }
+    }
+
+    private static string ConvertToAscii(string text)
+    {
+        string cleanedText = text.Replace('’','\'').Replace('–', '-').Replace('“', '"').Replace('”', '"').Replace("…", "...").Replace("—", "--").Replace("™", "");
+        byte[] textData = Encoding.Convert(Encoding.Default, Encoding.ASCII, Encoding.Default.GetBytes(cleanedText));
+        return Encoding.ASCII.GetString(textData);
     }
 
     #endregion

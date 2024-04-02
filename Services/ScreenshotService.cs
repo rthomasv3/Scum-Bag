@@ -269,13 +269,8 @@ internal sealed class ScreenshotService
             {
                 IEnumerable<string> files = Directory
                     .GetFiles(directory, "*.*", SearchOption.AllDirectories)
-                    .Select(x => Path.GetFileName(x))
-                    .Where(x =>
-                    {
-                        string ext = Path.GetExtension(x);
-                        return String.IsNullOrWhiteSpace(ext) ||
-                            String.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase);
-                    })
+                    .Where (x => x.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || String.IsNullOrWhiteSpace(Path.GetExtension(x)))
+                    .Select(Path.GetFileName)
                     .Distinct();
 
                 fileSet = new(files);

@@ -177,7 +177,7 @@ internal sealed class BackupService
         if (hashData != null)
         {
             StringBuilder builder = new();
-            for (int i = 0; i < hashData.Length; i++)
+            for (int i = 0; i < hashData.Length; ++i)
             {
                 builder.Append(hashData[i].ToString("x2"));
             }
