@@ -177,7 +177,15 @@ internal sealed class GameService : IDisposable
 
     private static string ConvertToAscii(string text)
     {
-        string cleanedText = text.Replace('’','\'').Replace('–', '-').Replace('“', '"').Replace('”', '"').Replace("…", "...").Replace("—", "--").Replace("™", "");
+        string cleanedText = text
+            .Replace('’','\'')
+            .Replace('–', '-')
+            .Replace('“', '"')
+            .Replace('”', '"')
+            .Replace("…", "...")
+            .Replace("—", "--")
+            .Replace("™", "")
+            .Replace("®", "");
         byte[] textData = Encoding.Convert(Encoding.Default, Encoding.ASCII, Encoding.Default.GetBytes(cleanedText));
         return Encoding.ASCII.GetString(textData);
     }
