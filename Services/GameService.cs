@@ -103,45 +103,63 @@ internal sealed class GameService : IDisposable
 
                 foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
                 {
-                    if (logInfo)
-                    {
-                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Found: {libraryFolder.Path}");
-                    }
-
                     string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
 
-                    foreach (string file in Directory.EnumerateFiles(appsPath, "*.acf"))
+                    if (Directory.Exists(appsPath))
                     {
                         if (logInfo)
                         {
-                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Entry Found: {file}");
+                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Found: {appsPath}");
                         }
 
-                        try
+                        foreach (string acfFile in Directory.EnumerateFiles(appsPath, "*.acf"))
                         {
-                            FileStream fileStream = File.OpenRead(file);
-                            App app = _deserializer.Deserialize<App>(fileStream);
-                            app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
-
-                            if (!_blackList.Contains(app.AppState.Name))
+                            try
                             {
-                                app.AppState.Name = ConvertToAscii(app.AppState.Name);
-                                _steamApps.Add(app.AppState);
-
-                                if (logInfo)
+                                if (File.Exists(acfFile))
                                 {
-                                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
+                                    string acfText = File.ReadAllText(acfFile);
+
+                                    if (acfText.StartsWith("\"AppState\""))
+                                    {
+                                        if (logInfo)
+                                        {
+                                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Entry Found: {acfFile}");
+                                        }
+
+                                        App app = _deserializer.Deserialize<App>(acfText);
+                                        app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
+
+                                        if (!_blackList.Contains(app.AppState.Name))
+                                        {
+                                            app.AppState.Name = ConvertToAscii(app.AppState.Name);
+                                            _steamApps.Add(app.AppState);
+
+                                            if (logInfo)
+                                            {
+                                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
+                                            }
+                                        }
+                                        else if (logInfo)
+                                        {
+                                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}"); 
+                                        }
+                                    }
+                                    else if (logInfo)
+                                    {
+                                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Invalid: {acfFile}"); 
+                                    }
                                 }
                             }
-                            else if (logInfo)
+                            catch (Exception e)
                             {
-                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}"); 
+                                _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - {e}");
                             }
                         }
-                        catch (Exception e)
-                        {
-                            _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - {e}");
-                        }
+                    }
+                    else if (logInfo)
+                    {
+                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Invalid: {appsPath}");
                     }
                 }
 
