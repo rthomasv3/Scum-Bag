@@ -270,7 +270,7 @@ internal sealed class ScreenshotService
                 IEnumerable<string> files = Directory
                     .GetFiles(directory, "*.*", SearchOption.AllDirectories)
                     .Where (x => x.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || String.IsNullOrWhiteSpace(Path.GetExtension(x)))
-                    .Select(Path.GetFileName)
+                    .Select(Path.GetFileNameWithoutExtension)
                     .Distinct();
 
                 fileSet = new(files);
@@ -292,17 +292,11 @@ internal sealed class ScreenshotService
 
         foreach (Process process in Process.GetProcesses())
         {
-            try
+            if (executables.Contains(process.ProcessName))
             {
-                string fullPath =  Path.GetFileName(process.MainModule?.FileName);
-
-                if (!String.IsNullOrWhiteSpace(fullPath) && executables.Contains(fullPath))
-                {
-                    gameProcess = process;
-                    break;
-                }
+                gameProcess = process;
+                break;
             }
-            catch { /* Empty because tons of processes always throw errors when checking module */ }
         }
 
         return gameProcess;
