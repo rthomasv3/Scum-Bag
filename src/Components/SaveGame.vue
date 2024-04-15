@@ -31,7 +31,10 @@
 
             <div class="flex flex-column gap-2 p-fluid">
                 <label for="game">Game</label>
-                <AutoComplete v-model="game" :suggestions="filteredGames" placeholder="Game name..."  @complete="search" />
+                <div class="flex gap-3">
+                    <AutoComplete v-model="game" class="flex-grow-1" :suggestions="filteredGames" placeholder="Game name..."  @complete="search" />
+                    <Button v-if="props.id !== 'new'" label="Launch" class="w-6rem" @click="launchGame" />
+                </div>
             </div>
 
             <div>
@@ -445,6 +448,15 @@ function onBackupDeleted(directory) {
         backups.value.splice(index, 1);
         selectedBackup.value = null;
         screenshot.value = null;
+    }
+}
+
+async function launchGame() {
+    if (game.value && game.value.trim()) {
+        const launched = await galdrInvoke("launchGame", { gameName: game.value });
+        if (!launched) {
+            toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to launch game', group: 'tr', life: 3000 });
+        }
     }
 }
 </script>

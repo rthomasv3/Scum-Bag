@@ -9,12 +9,15 @@
                 <div class="flex justify-content-center">
                     <Button class="tree-title-button" icon="pi pi-plus" severity="secondary" text aria-label="Add" 
                             size="small" @click.stop="addSave()"
-                            v-tooltip.left="{ value: 'Add Save', showDelay: 1000 }" />
+                            v-tooltip.left="{ value: 'Add Save', showDelay: 1500 }" />
+
+                    <Button class="tree-title-button" icon="pi pi-cog" severity="secondary" text aria-label="Settings" 
+                            @click.stop="showSettings()" v-tooltip.left="{ value: 'Settings', showDelay: 1500 }" />
                 </div>
             </div>
 
             <div class="tree-wrapper">
-                <Tree class="w-full h-full bg-transparent text-400" :value="nodes" :filter="true" filterMode="lenient"
+                <Tree class="w-full h-full bg-transparent text-500" :value="nodes" :filter="true" filterMode="lenient"
                       filterPlaceholder="Search saves..." scrollHeight="flex" :metaKeySelection="false" selectionMode="single"
                        v-model:selectionKeys="selectedKeys" @node-select="onNodeSelected" @node-unselect="onNodeUnselected">
                     <template #default="slotProps">
@@ -38,17 +41,21 @@
 
     <Toast position="top-right" group="tr" />
     <ConfirmDialog></ConfirmDialog>
+
+    <SettingsDialog ref="settingsDialog" />
 </template>
 
 <script setup>
-import { ref, onBeforeMount } from "vue";
+import SettingsDialog from "./Components/SettingsDialog.vue";
 import SaveGame from "./Components/SaveGame.vue";
+import { ref, onBeforeMount } from "vue";
 import { useConfirm } from "primevue/useconfirm";
 
 const nodes = ref(null);
 const selectedKeys = ref({});
 const selectedId = ref(null);
 const hasUnsavedChanges = ref(false);
+const settingsDialog = ref();
 
 const confirm = useConfirm();
 
@@ -128,6 +135,10 @@ function confirmChangeSelected(key) {
         }
     });
 }
+
+function showSettings() {
+    settingsDialog.value.show();
+}
 </script>
 
 <style>
@@ -175,6 +186,10 @@ html, body {
 ::-webkit-scrollbar-thumb {
   background: var(--surface-300);
   border-radius: 4px;
+}
+
+.p-splitter-gutter-handle {
+    background: var(--surface-300) !important;
 }
 </style>
 

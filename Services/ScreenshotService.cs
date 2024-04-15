@@ -177,7 +177,7 @@ internal sealed class ScreenshotService
                 
                 if (_watchers.TryGetValue(directory, out WatchLocation watchLocation))
                 {
-                    string saveDirectory = Path.Combine(_config.DataDirectory, watchLocation.SaveGameId.ToString());
+                    string saveDirectory = Path.Combine(_config.BackupsDirectory, watchLocation.SaveGameId.ToString());
                     TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
                 }
             }

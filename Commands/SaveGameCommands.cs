@@ -139,5 +139,11 @@ internal sealed class SaveGameCommands
         return directory;
     }
 
+    [Command]
+    public bool LaunchGame(string gameName)
+    {
+        return _gameService.LaunchGame(gameName);
+    }
+
     #endregion
 }

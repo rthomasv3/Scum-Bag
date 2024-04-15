@@ -45,11 +45,11 @@ internal sealed class SaveService
                 IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
                 IEnumerable<IGrouping<string, SaveGame>> saveGroups = saveGames.GroupBy(x => String.IsNullOrEmpty(x.Game) ? "Game" : x.Game);
 
-                foreach(IGrouping<string, SaveGame> group in saveGroups)
+                foreach(IGrouping<string, SaveGame> group in saveGroups.OrderBy(x => x.Key))
                 {
                     List<TreeNode> children = new();
 
-                    foreach(SaveGame saveGame in group)
+                    foreach(SaveGame saveGame in group.OrderBy(x => x.Name))
                     {
                         children.Add(new TreeNode()
                         {
@@ -92,7 +92,7 @@ internal sealed class SaveService
 
                     if (String.IsNullOrWhiteSpace(save.BackupLocation))
                     {
-                        save.BackupLocation = Path.Combine(_config.DataDirectory, save.Id.ToString());
+                        save.BackupLocation = Path.Combine(_config.BackupsDirectory, save.Id.ToString());
                     }
 
                     break;
@@ -117,7 +117,7 @@ internal sealed class SaveService
 
             if (saveGame != null)
             {
-                string path = Path.Combine(_config.DataDirectory, id.ToString());
+                string path = Path.Combine(_config.BackupsDirectory, id.ToString());
 
                 DirectoryInfo parent = new(path);
 
@@ -136,14 +136,17 @@ internal sealed class SaveService
                             isFavorite = metadata.IsFavorite;
                         }
 
-                        backups.Add(new Backup()
+                        if (Int64.TryParse(dir.Name, out long time))
                         {
-                            SaveId = saveGame.Id,
-                            Time = ((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds(),
-                            Directory = dir.FullName,
-                            Tag = tag,
-                            IsFavorite = isFavorite
-                        });
+                            backups.Add(new Backup()
+                            {
+                                SaveId = saveGame.Id,
+                                Time = ((DateTimeOffset)new DateTime(time)).ToUnixTimeMilliseconds(),
+                                Directory = dir.FullName,
+                                Tag = tag,
+                                IsFavorite = isFavorite
+                            });
+                        }
                     }
                 }
             }
@@ -190,7 +193,7 @@ internal sealed class SaveService
             }
             
             saveGame.Id = Guid.NewGuid();
-            saveGame.BackupLocation = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
+            saveGame.BackupLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
 
             List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
 
@@ -276,7 +279,7 @@ internal sealed class SaveService
 
             _backupService.StopTimer(id);
 
-            string path = Path.Combine(_config.DataDirectory, id.ToString());
+            string path = Path.Combine(_config.BackupsDirectory, id.ToString());
             DirectoryInfo parent = new(path);
 
             if (parent.Exists)
@@ -307,7 +310,7 @@ internal sealed class SaveService
         {
             SaveGame saveGame = GetSave(id);
 
-            string path = Path.Combine(_config.DataDirectory, id.ToString());
+            string path = Path.Combine(_config.BackupsDirectory, id.ToString());
 
             DirectoryInfo parent = new(path);
 
@@ -423,6 +426,19 @@ internal sealed class SaveService
         }
 
         return deleted;
+    }
+
+    public void UpdateSavesBackupLocation()
+    {
+        IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+
+        foreach (SaveGame saveGame in saveGames)
+        {
+            saveGame.BackupLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
+        }
+
+        string fileContent = JsonConvert.SerializeObject(saveGames);
+        File.WriteAllText(_config.SavesPath, fileContent);
     }
 
     #endregion

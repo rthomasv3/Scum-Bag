@@ -19,6 +19,7 @@ import Image from "primevue/image";
 import Dialog from "primevue/dialog";
 import Checkbox from "primevue/checkbox";
 import ConfirmPopup from "primevue/confirmpopup";
+import Dropdown from "primevue/dropdown";
 import "primeflex/primeflex.css";
 import "primeicons/primeicons.css";
 
@@ -44,5 +45,6 @@ app.component("Image", Image);
 app.component("Dialog", Dialog);
 app.component("Checkbox", Checkbox);
 app.component("ConfirmPopup", ConfirmPopup);
+app.component("Dropdown", Dropdown);
 
 app.mount("#app");

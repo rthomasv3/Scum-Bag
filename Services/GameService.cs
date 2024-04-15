@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -13,6 +14,41 @@ namespace Scum_Bag.Services;
 
 internal sealed class GameService : IDisposable
 {
+    #region Native
+
+    public enum WindowShowStyle : uint
+    {
+        Hide = 0,
+        ShowNormal = 1,
+        ShowMinimized = 2,
+        ShowMaximized = 3,
+        Maximize = 3,
+        ShowNormalNoActivate = 4,
+        Show = 5,
+        Minimize = 6,
+        ShowMinNoActivate = 7,
+        ShowNoActivate = 8,
+        Restore = 9,
+        ShowDefault = 10,
+        ForceMinimized = 11
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, WindowShowStyle nCmdShow);
+
+    #endregion
+
     #region Fields
 
     private static readonly HashSet<string> _blackList = ["Steamworks Common Redistributables"];
@@ -73,6 +109,55 @@ internal sealed class GameService : IDisposable
         _steamLibraryTimer.Enabled = false;
         _steamLibraryTimer.Elapsed -= SteamLibraryTimer_Elapsed;
         _steamLibraryTimer.Dispose();
+    }
+
+    public bool LaunchGame(string gameName)
+    {
+        bool launched = false;
+
+        if (!String.IsNullOrWhiteSpace(gameName))
+        {
+            AppState appState = _steamApps.FirstOrDefault(x => x.Name == gameName);
+
+            if (appState != null)
+            {
+                try
+                {
+                    Process gameProcess = null;
+                    Process steamProcess = Process.Start(_steamExePath, $"steam://launch/{appState.AppId}");
+
+                    steamProcess.WaitForExit();
+
+                    HashSet<string> possibleGameExecutables = new(Directory
+                        .GetFiles(appState.FullInstallDir, "*.*", SearchOption.AllDirectories)
+                        .Where (x => x.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || String.IsNullOrWhiteSpace(Path.GetExtension(x)))
+                        .Select(Path.GetFileNameWithoutExtension));
+
+                    int retryCount = 0;
+                    while (gameProcess == null && retryCount++ < 10)
+                    {
+                        System.Threading.Thread.Sleep(1000);
+
+                        gameProcess = Process.GetProcesses()
+                            .Where(x => possibleGameExecutables.Contains(x.ProcessName))
+                            .OrderByDescending(x => x.NonpagedSystemMemorySize64)
+                            .FirstOrDefault();
+                    }
+                    
+                    if (gameProcess != null)
+                    {
+                        launched = true;
+                        BringWindowToForeground(gameProcess.MainWindowHandle);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _loggingService.LogError($"{nameof(GameService)}>{nameof(LaunchGame)} - {e}");
+                }
+            }
+        }
+
+        return launched;
     }
 
     #endregion
@@ -188,6 +273,26 @@ internal sealed class GameService : IDisposable
             .Replace("®", "");
         byte[] textData = Encoding.Convert(Encoding.Default, Encoding.ASCII, Encoding.Default.GetBytes(cleanedText));
         return Encoding.ASCII.GetString(textData);
+    }
+
+    private void BringWindowToForeground(nint windowHandle)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (windowHandle != GetForegroundWindow())
+            {
+                if (IsIconic(windowHandle))
+                {
+                    // Minimized so send restore
+                    ShowWindow(windowHandle, WindowShowStyle.Restore);
+                }
+                else
+                {
+                    // Already Maximized or Restored so just bring to front
+                    SetForegroundWindow(windowHandle);
+                }
+            }
+        }
     }
 
     #endregion

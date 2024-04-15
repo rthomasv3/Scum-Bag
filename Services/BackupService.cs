@@ -191,7 +191,7 @@ internal sealed class BackupService
     {
         try
         {
-            string parentDirectory = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
+            string parentDirectory = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
 
             if (!Directory.Exists(parentDirectory))
             {
@@ -267,7 +267,7 @@ internal sealed class BackupService
 
             if (saveGame != null)
             {
-                string parentDirectory = Path.Combine(_config.DataDirectory, saveGame.Id.ToString());
+                string parentDirectory = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
 
                 if (!Directory.Exists(parentDirectory))
                 {
