@@ -49,7 +49,7 @@ const toast = useToast();
 const primeVue = usePrimeVue();
 
 const dialogVisible = ref(null);
-const settings = ref(null)
+const settings = ref(null);
 const hasChanges = ref(false);
 const oldIsDark = ref(true);
 const isDark = ref(true);
@@ -114,6 +114,7 @@ function onShown() {
 }
 
 function onHide() {
+    cancel();
     hasChanges.value = false;
     emit("hidden");
 }
