@@ -69,6 +69,7 @@ const themes = ref([
 ]);
 const backupLocation = ref("")
 const isLoading = ref(false);
+const shouldReset = ref(true);
 
 initialize();
 
@@ -106,6 +107,7 @@ function updateTheme() {
 }
 
 function showDialog() {
+    shouldReset.value = true;
     getSettings();
 }
 
@@ -114,7 +116,9 @@ function onShown() {
 }
 
 function onHide() {
-    cancel();
+    if (shouldReset.value) {
+        cancel();
+    }
     hasChanges.value = false;
     emit("hidden");
 }
@@ -171,6 +175,7 @@ async function save() {
 
     if (saved) {
         toast.add({ severity: 'success', summary: 'Success', detail: 'Settings saved successfully', group: 'tr', life: 3000 });
+        shouldReset.value = false;
         dialogVisible.value = false;
     } else {
         toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to save settings', group: 'tr', life: 3000 });
