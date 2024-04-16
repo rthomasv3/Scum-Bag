@@ -145,7 +145,7 @@ internal sealed class BackupService
                 {
                     try
                     {
-                        using FileStream fileStream = fileInfo.Open(FileMode.Open);
+                        using FileStream fileStream = fileInfo.OpenRead();
                         fileStream.Position = 0;
                         byte[] hashValue = mySHA256.ComputeHash(fileStream);
                         allHashes.AddRange(hashValue);
@@ -164,7 +164,7 @@ internal sealed class BackupService
             FileInfo fileInfo = new(path);
             try
             {
-                using FileStream fileStream = fileInfo.Open(FileMode.Open);
+                using FileStream fileStream = fileInfo.OpenRead();
                 fileStream.Position = 0;
                 hashData = mySHA256.ComputeHash(fileStream);
             }
@@ -276,14 +276,19 @@ internal sealed class BackupService
                 
                 DirectoryInfo parentDir = new(parentDirectory);
                 DirectoryInfo newestDir = null;
+                long newestDirTime = 0;
                 DirectoryInfo[] dirs = parentDir.GetDirectories();
 
                 // find the latest backup
                 foreach (DirectoryInfo dir in dirs)
                 {
-                    if (newestDir == null || dir.CreationTime > newestDir.CreationTime)
+                    if (Int64.TryParse(dir.Name, out long dirTime))
                     {
-                        newestDir = dir;
+                        if (newestDir == null || dirTime > newestDirTime)
+                        {
+                            newestDir = dir;
+                            newestDirTime = dirTime;
+                        }
                     }
                 }
 
@@ -334,6 +339,7 @@ internal sealed class BackupService
                         while (totalBackups > saveGame.MaxBackups)
                         {
                             DirectoryInfo oldestDir = null;
+                            long oldestDirTime = 0;
 
                             foreach (DirectoryInfo dir in dirs)
                             {
@@ -346,9 +352,13 @@ internal sealed class BackupService
 
                                 if (!isFavorite)
                                 {
-                                    if (oldestDir == null || dir.CreationTime < oldestDir.CreationTime)
+                                    if (Int64.TryParse(dir.Name, out long dirTime))
                                     {
-                                        oldestDir = dir;
+                                        if (oldestDir == null || dirTime < oldestDirTime)
+                                        {
+                                            oldestDir = dir;
+                                            oldestDirTime = dirTime;
+                                        }
                                     }
                                 }
                             }

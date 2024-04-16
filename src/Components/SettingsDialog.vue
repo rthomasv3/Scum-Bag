@@ -3,7 +3,7 @@
         <div class="flex align-items-center gap-2 mb-5">
             <label for="theme" class="font-semibold w-10rem">Theme</label>
 
-            <Dropdown id="theme" v-model="currentTheme" :options="themes" optionLabel="name" placeholder="Select a Theme" class="flex-grow-1" @change="updateTheme">
+            <Dropdown id="theme" v-model="currentTheme" :options="themes" optionLabel="name" placeholder="Select a Theme" class="flex-grow-1" @change="updateTheme" :disabled="isLoading">
                 <template #value="slotProps">
                     <div v-if="slotProps.value" class="flex align-items-center">
                         <div class="theme-preview" :style="'background-color: ' + slotProps.value.color"></div>
@@ -22,13 +22,13 @@
             </Dropdown>
 
             <Button :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" v-tooltip.right="{ value: 'Toggle Dark Mode', showDelay: 1500 }" 
-                     text rounded aria-label="Toggle Dark Mode" severity="secondary" @click="toggleDarkMode" />
+                     text rounded aria-label="Toggle Dark Mode" severity="secondary" @click="toggleDarkMode" :disabled="isLoading" />
         </div>
 
         <div class="flex align-items-center gap-2 mb-5">
             <label for="directory" class="font-semibold w-10rem">Backup Directory</label>
-            <InputText id="directory" class="flex-grow-1" placeholder="Backup directory..." v-model="backupLocation" @change="directoryChanged" />
-            <Button icon="pi pi-folder-open" text severity="secondary" @click="openDirectory" />
+            <InputText id="directory" class="flex-grow-1" placeholder="Backup directory..." v-model="backupLocation" @change="directoryChanged" :disabled="isLoading" />
+            <Button icon="pi pi-folder-open" text severity="secondary" @click="openDirectory" :disabled="isLoading" />
         </div>
 
         <div class="flex mt-2 gap-2 justify-content-end">

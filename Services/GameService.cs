@@ -126,8 +126,6 @@ internal sealed class GameService : IDisposable
                     Process gameProcess = null;
                     Process steamProcess = Process.Start(_steamExePath, $"steam://launch/{appState.AppId}");
 
-                    steamProcess.WaitForExit();
-
                     HashSet<string> possibleGameExecutables = new(Directory
                         .GetFiles(appState.FullInstallDir, "*.*", SearchOption.AllDirectories)
                         .Where (x => x.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || String.IsNullOrWhiteSpace(Path.GetExtension(x)))

@@ -320,10 +320,24 @@ internal sealed class SaveService
 
                 foreach (DirectoryInfo dir in dirs)
                 {
-                    if (((DateTimeOffset)dir.CreationTime).ToUnixTimeMilliseconds() == time)
+                    if (Int64.TryParse(dir.Name, out long dirTime))
                     {
-                        restored = RestoreFile(dir.FullName, saveGame.SaveLocation);
-                        break;
+                        if (((DateTimeOffset)new DateTime(dirTime)).ToUnixTimeMilliseconds() == time)
+                        {
+                            restored = RestoreFile(dir.FullName, saveGame.SaveLocation);
+
+                            if (restored)
+                            {
+                                string screenShotPath = Path.Combine(dir.FullName, _config.BackupScreenshotName);
+                                if (File.Exists(screenShotPath))
+                                {
+                                    string latestScreenshotPath = Path.Combine(saveGame.BackupLocation, _config.LatestScreenshotName);
+                                    File.Copy(screenShotPath, latestScreenshotPath, true);
+                                }
+                            }
+
+                            break;
+                        }
                     }
                 }
             }

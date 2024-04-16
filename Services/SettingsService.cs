@@ -182,7 +182,7 @@ internal sealed class SettingsService
             {
                 try
                 {
-                    using FileStream fileStream = fileInfo.Open(FileMode.Open);
+                    using FileStream fileStream = fileInfo.OpenRead();
                     fileStream.Position = 0;
                     byte[] hashValue = mySHA256.ComputeHash(fileStream);
                     allHashes.AddRange(hashValue);
@@ -200,7 +200,7 @@ internal sealed class SettingsService
             FileInfo fileInfo = new(path);
             try
             {
-                using FileStream fileStream = fileInfo.Open(FileMode.Open);
+                using FileStream fileStream = fileInfo.OpenRead();
                 fileStream.Position = 0;
                 hashData = mySHA256.ComputeHash(fileStream);
             }

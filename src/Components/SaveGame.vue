@@ -467,12 +467,17 @@ function onBackupDeleted(directory) {
 
 async function launchGame() {
     if (game.value && game.value.trim()) {
-        isLaunching.value = true;
-        const launched = await galdrInvoke("launchGame", { gameName: game.value });
-        if (!launched) {
-            toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to launch game', group: 'tr', life: 3000 });
+        try {
+            isLaunching.value = true;
+            const launched = await galdrInvoke("launchGame", { gameName: game.value });
+            if (!launched) {
+                toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to launch game', group: 'tr', life: 3000 });
+            }
+        } catch(e) {
+            console.error(e);
+        } finally {
+            isLaunching.value = false;
         }
-        isLaunching.value = false;
     }
 }
 </script>
