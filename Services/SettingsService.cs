@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Galdr;
 using Scum_Bag.DataAccess.Data;
 
 namespace Scum_Bag.Services;
@@ -14,16 +15,18 @@ internal sealed class SettingsService
     private readonly Config _config;
     private readonly LoggingService _loggingService;
     private readonly SaveService _saveService;
+    private readonly EventService _eventService;
 
     #endregion
 
     #region Constructor
 
-    public SettingsService(Config config, LoggingService loggingService, SaveService saveService)
+    public SettingsService(Config config, LoggingService loggingService, SaveService saveService, EventService eventService)
     {
         _config = config;
         _loggingService = loggingService;
         _saveService = saveService;
+        _eventService = eventService;
     }
 
     #endregion
@@ -53,18 +56,25 @@ internal sealed class SettingsService
         if (!String.IsNullOrWhiteSpace(settings.BackupsDirectory) && Directory.Exists(settings.BackupsDirectory))
         {
             saved = true;
+            bool notifyLocationChanged = false;
 
             try
             {
                 if (_config.BackupsDirectory != settings.BackupsDirectory)
                 {
                     saved = UpdateBackupsDirectory(_config.BackupsDirectory, settings.BackupsDirectory);
+                    notifyLocationChanged = saved;
                 }
 
                 if (saved)
                 {
                     _config.SaveSettings(settings);
                     _saveService.UpdateSavesBackupLocation();
+
+                    if (notifyLocationChanged)
+                    {
+                        _eventService.PublishEvent("backupLocationChanged", settings.BackupsDirectory);
+                    }
                 }
             }
             catch (Exception e)

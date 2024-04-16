@@ -33,7 +33,7 @@
                 <label for="game">Game</label>
                 <div class="flex gap-3">
                     <AutoComplete v-model="game" class="flex-grow-1" :suggestions="filteredGames" placeholder="Game name..."  @complete="search" />
-                    <Button v-if="props.id !== 'new'" label="Launch" class="w-6rem" @click="launchGame" />
+                    <Button v-if="props.id !== 'new'" label="Launch" class="w-8rem" @click="launchGame" :loading="isLaunching" />
                 </div>
             </div>
 
@@ -169,6 +169,7 @@ const selectedBackup = ref(null);
 const hasChanges = ref(false);
 const screenshot = ref(null);
 const backupDialog = ref();
+const isLaunching = ref(false);
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -204,6 +205,19 @@ onBeforeMount(async () => {
         },
         false,
     );
+
+    window.addEventListener(
+        "backupLocationChanged",
+        async (e) => {
+            if (e.detail) {
+                supressChangeFlag = true;
+                await getSave();
+                await getBackups();
+                supressChangeFlag = false;
+            }
+        },
+        false,
+    );
 });
 
 watch(() => props.id, async () => {
@@ -214,7 +228,7 @@ watch(() => props.id, async () => {
     screenshot.value = null;
     hasChanges.value = false;
     supressChangeFlag = false;
-
+    document.getElementsByClassName("p-listbox-list-wrapper")[0].scrollTop = 0;
 }, { flush: 'post' });
 
 watch(enabled, () => {
@@ -453,10 +467,12 @@ function onBackupDeleted(directory) {
 
 async function launchGame() {
     if (game.value && game.value.trim()) {
+        isLaunching.value = true;
         const launched = await galdrInvoke("launchGame", { gameName: game.value });
         if (!launched) {
             toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to launch game', group: 'tr', life: 3000 });
         }
+        isLaunching.value = false;
     }
 }
 </script>

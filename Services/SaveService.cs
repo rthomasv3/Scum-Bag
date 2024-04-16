@@ -434,7 +434,22 @@ internal sealed class SaveService
 
         foreach (SaveGame saveGame in saveGames)
         {
-            saveGame.BackupLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
+            string newLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
+
+            if (saveGame.BackupMetadata?.Count > 0)
+            {
+                Dictionary<string, BackupMetadata> updatedMetadata = new();
+
+                foreach (KeyValuePair<string, BackupMetadata> metadata in saveGame.BackupMetadata)
+                {
+                    string key = metadata.Key.Replace(saveGame.BackupLocation, newLocation);
+                    updatedMetadata[key] = metadata.Value;
+                }
+
+                saveGame.BackupMetadata = updatedMetadata;
+            }
+
+            saveGame.BackupLocation = newLocation;
         }
 
         string fileContent = JsonConvert.SerializeObject(saveGames);

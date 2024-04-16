@@ -15,5 +15,5 @@ internal sealed class SaveGame
     public int MaxBackups { get; init; }
     public string Game { get; init; }
     public string Icon { get; init; }
-    public Dictionary<string, BackupMetadata> BackupMetadata { get; init; } = new Dictionary<string, BackupMetadata>();
+    public Dictionary<string, BackupMetadata> BackupMetadata { get; set; } = new Dictionary<string, BackupMetadata>();
 }
