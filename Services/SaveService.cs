@@ -235,7 +235,11 @@ internal sealed class SaveService
             {
                 if (saveGames[i].Id == saveGame.Id)
                 {
-                    saveGames[i] = saveGame;
+                    saveGames[i].Name = saveGame.Name;
+                    saveGames[i].SaveLocation = saveGame.SaveLocation;
+                    saveGames[i].Game = saveGame.Game;
+                    saveGames[i].Frequency = saveGame.Frequency;
+                    saveGames[i].MaxBackups = saveGame.MaxBackups;
                     updated = true;
                     break;
                 }

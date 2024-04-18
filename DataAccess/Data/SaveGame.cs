@@ -9,11 +9,11 @@ internal sealed class SaveGame
     public bool Enabled { get; set; }
     public string BackupLocation { get; set; }
     
-    public string Name { get; init; }
-    public string SaveLocation { get; init; }
-    public int Frequency { get; init; }
-    public int MaxBackups { get; init; }
-    public string Game { get; init; }
-    public string Icon { get; init; }
+    public string Name { get; set; }
+    public string SaveLocation { get; set; }
+    public int Frequency { get; set; }
+    public int MaxBackups { get; set; }
+    public string Game { get; set; }
+    public string Icon { get; set; }
     public Dictionary<string, BackupMetadata> BackupMetadata { get; set; } = new Dictionary<string, BackupMetadata>();
 }

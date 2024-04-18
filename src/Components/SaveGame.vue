@@ -33,7 +33,7 @@
                 <label for="game">Game</label>
                 <div class="flex gap-3">
                     <AutoComplete v-model="game" class="flex-grow-1" :suggestions="filteredGames" placeholder="Game name..."  @complete="search" />
-                    <Button v-if="props.id !== 'new'" label="Launch" class="w-8rem" @click="launchGame" :loading="isLaunching" />
+                    <Button v-if="props.id !== 'new'" label="Launch" class="w-8rem" @click="launchGame" :loading="isLaunching" :disabled="!game" />
                 </div>
             </div>
 
