@@ -74,7 +74,7 @@ internal sealed class GameService : IDisposable
         }
         else
         {
-            _steamExePath = "~/.steam/steam";
+            _steamExePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam/steam/steam.sh");
         }
 
         _libraryPath = Path.Combine(Path.Combine(Path.GetDirectoryName(_steamExePath), "steamapps"), "libraryfolders.vdf");
@@ -147,6 +147,10 @@ internal sealed class GameService : IDisposable
                         launched = true;
                         BringWindowToForeground(gameProcess.MainWindowHandle);
                     }
+                    else
+                    {
+                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LaunchGame)} - Game Not Found: {String.Join(", ", possibleGameExecutables)}");
+                    }
                 }
                 catch (Exception e)
                 {
@@ -213,7 +217,9 @@ internal sealed class GameService : IDisposable
                                         App app = _deserializer.Deserialize<App>(acfText);
                                         app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
 
-                                        if (!_blackList.Contains(app.AppState.Name))
+                                        if (!_blackList.Contains(app.AppState.Name) && 
+                                            !app.AppState.Name.StartsWith("Proton ") && 
+                                            !app.AppState.Name.StartsWith("Steam Linux Runtime "))
                                         {
                                             app.AppState.Name = ConvertToAscii(app.AppState.Name);
                                             _steamApps.Add(app.AppState);
