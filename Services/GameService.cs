@@ -161,7 +161,7 @@ internal sealed class GameService : IDisposable
                     }
                     else
                     {
-                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LaunchGame)} - Game Not Found: {String.Join(", ", possibleGameExecutables)}");
+                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(LaunchGame)} - Game Not Found: {gameName}");
                     }
                 }
                 catch (Exception e)
