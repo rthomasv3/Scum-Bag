@@ -140,7 +140,7 @@ internal sealed class GameService : IDisposable
                         // No reliable way to check if file is executable on Linux using C#...
                         possibleGameExecutables = new(Directory
                             .GetFiles(appState.FullInstallDir, "*.*", SearchOption.AllDirectories)
-                            .Select(Path.GetFileNameWithoutExtension));
+                            .Select(Path.GetFileName));
                     }
 
                     int retryCount = 0;
