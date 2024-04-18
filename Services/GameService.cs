@@ -126,10 +126,22 @@ internal sealed class GameService : IDisposable
                     Process gameProcess = null;
                     Process steamProcess = Process.Start(_steamExePath, $"steam://launch/{appState.AppId}");
 
-                    HashSet<string> possibleGameExecutables = new(Directory
-                        .GetFiles(appState.FullInstallDir, "*.*", SearchOption.AllDirectories)
-                        .Where (x => x.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || String.IsNullOrWhiteSpace(Path.GetExtension(x)))
-                        .Select(Path.GetFileNameWithoutExtension));
+                    HashSet<string> possibleGameExecutables = new();
+
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        possibleGameExecutables = new(Directory
+                            .GetFiles(appState.FullInstallDir, "*.*", SearchOption.AllDirectories)
+                            .Where (x => x.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                            .Select(Path.GetFileNameWithoutExtension));
+                    }
+                    else
+                    {
+                        // No reliable way to check if file is executable on Linux using C#...
+                        possibleGameExecutables = new(Directory
+                            .GetFiles(appState.FullInstallDir, "*.*", SearchOption.AllDirectories)
+                            .Select(Path.GetFileNameWithoutExtension));
+                    }
 
                     int retryCount = 0;
                     while (gameProcess == null && retryCount++ < 10)
