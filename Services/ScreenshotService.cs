@@ -354,7 +354,7 @@ internal sealed class ScreenshotService
             if (Regex.IsMatch(flameshotOutput, @"Flameshot v\d+", RegexOptions.Compiled))
             {
                 bool isConfigDefault = false;
-                string flameshotConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "flameshot/flameshot.ini");
+                string flameshotConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "flameshot/flameshot.ini");
                 if (File.Exists(flameshotConfigPath))
                 {
                     string currentConfig = File.ReadAllText(flameshotConfigPath).Trim();
@@ -372,7 +372,7 @@ internal sealed class ScreenshotService
                     string flameshotConfig = "[General]\ncontrastOpacity=188\nshowDesktopNotification=false\n";
                     File.WriteAllText(flameshotConfigPath, flameshotConfig);
                 }
-                
+
                 _flameshotSetup = true;
             }
         }
