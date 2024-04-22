@@ -11,8 +11,9 @@ Scum Bag is a place to hold all of your save backups. It automatically backs up 
 * Restore to any backup point
 * Only makes a backup if the file(s) actually changed
 * Reads steam libraries to find installed games
-* Takes a screenshot of the game window when the save file changes (Windows only)
-    * Supports windowed and fullscreen apps
+* Takes a screenshot of the game window when the save file changes
+    * Requires `flameshot` on Linux and screenshots are only full screen
+    * Supports both windowed and fullscreen apps on Windows
 
 ## Requirements
 
@@ -21,6 +22,7 @@ Scum Bag is a place to hold all of your save backups. It automatically backs up 
 * Windows 10
     * Requires [Webview2 runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
 * Linux and BSD
+    * Requires `flameshot` for screenshots
     * Requires [WebKit2GTK](https://webkitgtk.org/)
     * Debian-based
         * `apt install libgtk-3-0 libwebkit2gtk-4.0-37`
