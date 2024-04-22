@@ -52,6 +52,7 @@ internal sealed class ScreenshotService
     private readonly GameService _gameService;
     private readonly LoggingService _loggingService;
     private readonly Dictionary<string, WatchLocation> _watchers;
+    private bool _flameshotSetup;
 
     #endregion
 
@@ -238,18 +239,7 @@ internal sealed class ScreenshotService
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                // check if flameshot is installed
-                ProcessStartInfo flameshotStartInfo = new()
-                {
-                    FileName = "/bin/flameshot",
-                    Arguments = "-v",
-                    RedirectStandardOutput = true
-                };
-                Process process = Process.Start(flameshotStartInfo);
-                process.WaitForExit();
-                string flameshotOutput = process.StandardOutput.ReadToEnd();
-
-                if (Regex.IsMatch(flameshotOutput, @"Flameshot v\d+", RegexOptions.Compiled))
+                if (IsFlameshotSetup())
                 {
                     string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
 
@@ -258,7 +248,7 @@ internal sealed class ScreenshotService
                         File.Delete(savePath);
                     }
 
-                    flameshotStartInfo = new ProcessStartInfo()
+                    ProcessStartInfo flameshotStartInfo = new()
                     {
                         FileName = "/bin/flameshot",
                         Arguments = $"screen -p \"{savePath}\""
@@ -344,6 +334,50 @@ internal sealed class ScreenshotService
         }
 
         return gameProcess;
+    }
+
+    private bool IsFlameshotSetup()
+    {
+        if (!_flameshotSetup)
+        {
+            // check if flameshot is installed
+            ProcessStartInfo flameshotStartInfo = new()
+            {
+                FileName = "/bin/flameshot",
+                Arguments = "-v",
+                RedirectStandardOutput = true
+            };
+            Process process = Process.Start(flameshotStartInfo);
+            process.WaitForExit();
+            string flameshotOutput = process.StandardOutput.ReadToEnd();
+
+            if (Regex.IsMatch(flameshotOutput, @"Flameshot v\d+", RegexOptions.Compiled))
+            {
+                bool isConfigDefault = false;
+                string flameshotConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "flameshot/flameshot.ini");
+                if (File.Exists(flameshotConfigPath))
+                {
+                    string currentConfig = File.ReadAllText(flameshotConfigPath).Trim();
+                    isConfigDefault = String.IsNullOrWhiteSpace(currentConfig) || 
+                                      currentConfig == "[General]" || 
+                                      currentConfig == "[General]\ncontrastOpacity=188";
+                }
+                else
+                {
+                    isConfigDefault = true;
+                }
+
+                if (isConfigDefault)
+                {
+                    string flameshotConfig = "[General]\ncontrastOpacity=188\nshowDesktopNotification=false\n";
+                    File.WriteAllText(flameshotConfigPath, flameshotConfig);
+                }
+                
+                _flameshotSetup = true;
+            }
+        }
+
+        return _flameshotSetup;
     }
 
     #endregion
