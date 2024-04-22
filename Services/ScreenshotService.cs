@@ -239,7 +239,15 @@ internal sealed class ScreenshotService
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 // check if flameshot is installed
-                string flameshotOutput = Process.Start("flameshot -v").StandardOutput.ReadToEnd();
+                ProcessStartInfo flameshotStartInfo = new()
+                {
+                    FileName = "/bin/flameshot",
+                    Arguments = "-v",
+                    RedirectStandardOutput = true
+                };
+                Process process = Process.Start(flameshotStartInfo);
+                process.WaitForExit();
+                string flameshotOutput = process.StandardOutput.ReadToEnd();
 
                 if (Regex.IsMatch(flameshotOutput, @"Flameshot v\d+", RegexOptions.Compiled))
                 {
@@ -250,7 +258,13 @@ internal sealed class ScreenshotService
                         File.Delete(savePath);
                     }
 
-                    Process.Start($"flameshot screen -p \"{savePath}\"");
+                    flameshotStartInfo = new ProcessStartInfo()
+                    {
+                        FileName = "/bin/flameshot",
+                        Arguments = $"screen -p \"{savePath}\""
+                    };
+
+                    Process.Start(flameshotStartInfo);
                 }
                 else
                 {
