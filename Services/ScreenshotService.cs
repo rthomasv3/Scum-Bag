@@ -6,6 +6,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
 using Scum_Bag.DataAccess.Data;
@@ -206,6 +207,7 @@ internal sealed class ScreenshotService
                         {
                             bool removeWindowBorder = true; // may remove this later...
 
+                            // need to update these trim sizes to a percentage instead of fixed values
                             int width = rectangle.Width - (removeWindowBorder ? _shadowSize * 2 : 0);
                             int height = removeWindowBorder ? rectangle.Height - _headerHeight - _shadowSize : rectangle.Height;
                             int left = rectangle.Left + (removeWindowBorder ? _shadowSize : 0);
@@ -215,7 +217,6 @@ internal sealed class ScreenshotService
 
                             using (Graphics g = Graphics.FromImage(bitmap))
                             {
-
                                 g.CopyFromScreen(left, top, 0, 0, bitmap.Size, CopyPixelOperation.SourceCopy);
                             }
 
@@ -229,7 +230,36 @@ internal sealed class ScreenshotService
                             bitmap.Save(savePath, ImageFormat.Jpeg);
                         }
                     }
+                    else
+                    {
+                        _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - Failed to find game process for directory {gameDirectory}");
+                    }
                 }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                // check if flameshot is installed
+                string flameshotOutput = Process.Start("flameshot -v").StandardOutput.ReadToEnd();
+
+                if (Regex.IsMatch(flameshotOutput, @"Flameshot v\d+", RegexOptions.Compiled))
+                {
+                    string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+
+                    if (File.Exists(savePath))
+                    {
+                        File.Delete(savePath);
+                    }
+
+                    Process.Start($"flameshot screen -p \"{savePath}\"");
+                }
+                else
+                {
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - flameshot not installed");
+                }
+            }
+            else
+            {
+                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - Skipping screenshot for platform {RuntimeInformation.OSDescription}");
             }
         }
         catch (Exception e)
@@ -273,7 +303,7 @@ internal sealed class ScreenshotService
                     .Select(Path.GetFileNameWithoutExtension)
                     .Distinct();
 
-                fileSet = new(files);
+                fileSet = new(files, StringComparer.OrdinalIgnoreCase);
             }
         }
         catch (Exception e)

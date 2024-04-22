@@ -449,30 +449,33 @@ internal sealed class SaveService
 
     public void UpdateSavesBackupLocation()
     {
-        IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
-
-        foreach (SaveGame saveGame in saveGames)
+        if (File.Exists(_config.SavesPath))
         {
-            string newLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
+            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
 
-            if (saveGame.BackupMetadata?.Count > 0)
+            foreach (SaveGame saveGame in saveGames)
             {
-                Dictionary<string, BackupMetadata> updatedMetadata = new();
+                string newLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
 
-                foreach (KeyValuePair<string, BackupMetadata> metadata in saveGame.BackupMetadata)
+                if (saveGame.BackupMetadata?.Count > 0)
                 {
-                    string key = metadata.Key.Replace(saveGame.BackupLocation, newLocation);
-                    updatedMetadata[key] = metadata.Value;
+                    Dictionary<string, BackupMetadata> updatedMetadata = new();
+
+                    foreach (KeyValuePair<string, BackupMetadata> metadata in saveGame.BackupMetadata)
+                    {
+                        string key = metadata.Key.Replace(saveGame.BackupLocation, newLocation);
+                        updatedMetadata[key] = metadata.Value;
+                    }
+
+                    saveGame.BackupMetadata = updatedMetadata;
                 }
 
-                saveGame.BackupMetadata = updatedMetadata;
+                saveGame.BackupLocation = newLocation;
             }
 
-            saveGame.BackupLocation = newLocation;
+            string fileContent = JsonConvert.SerializeObject(saveGames);
+            File.WriteAllText(_config.SavesPath, fileContent);
         }
-
-        string fileContent = JsonConvert.SerializeObject(saveGames);
-        File.WriteAllText(_config.SavesPath, fileContent);
     }
 
     #endregion
