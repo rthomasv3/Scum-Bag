@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +11,7 @@ internal sealed class LoggingService : IDisposable
     #region Fields
 
     private readonly string _logFileLocation;
-    private readonly Queue<string> _logQueue;
+    private readonly ConcurrentQueue<string> _logQueue;
     private readonly CancellationTokenSource _logQueueTokenSource;
 
     #endregion
@@ -33,12 +33,12 @@ internal sealed class LoggingService : IDisposable
 
     public void LogError(string text)
     {
-        _logQueue.Enqueue($"[Error]: {text}\n");
+        _logQueue.Enqueue($"{DateTime.Now:yyyy-MM-ddTHH:mm:ss} - [Error]: {text}\n");
     }
 
     public void LogInfo(string text)
     {
-        _logQueue.Enqueue($"[Info]: {text}\n");
+        _logQueue.Enqueue($"{DateTime.Now:yyyy-MM-ddTHH:mm:ss} - [Info]: {text}\n");
     }
 
     public void Dispose()
@@ -54,10 +54,12 @@ internal sealed class LoggingService : IDisposable
     {
         while (!_logQueueTokenSource.Token.IsCancellationRequested)
         {
-            if (_logQueue.Count > 0)
+            if (!_logQueue.IsEmpty)
             {
-                string text = _logQueue.Dequeue();
-                File.AppendAllText(_logFileLocation, text);
+                if (_logQueue.TryDequeue(out string text))
+                {
+                    File.AppendAllText(_logFileLocation, text);
+                }
             }
 
             Thread.Sleep(100);

@@ -16,18 +16,20 @@ internal sealed class SaveService
     private readonly BackupService _backupService;
     private readonly ScreenshotService _screenshotService;
     private readonly LoggingService _loggingService;
+    private readonly FileService _fileService;
 
     #endregion
 
     #region Constructor
 
     public SaveService(Config config, BackupService backupService, ScreenshotService screenshotService,
-        LoggingService loggingService)
+        LoggingService loggingService, FileService fileService)
     {
         _config = config;
         _backupService = backupService;
         _screenshotService = screenshotService;
         _loggingService = loggingService;
+        _fileService = fileService;
     }
 
     #endregion
@@ -490,7 +492,7 @@ internal sealed class SaveService
         {
             if (Directory.Exists(destination))
             {
-                OverwriteDirectory(source, destination);
+                _fileService.CopyDirectory(source, destination, true, true);
                 restored = true;
             }
             else
@@ -510,46 +512,6 @@ internal sealed class SaveService
         }
 
         return restored;
-    }
-
-    private void OverwriteDirectory(string sourceDir, string destinationDir, bool recursive = true)
-    {
-        try
-        {
-            DirectoryInfo dir = new(sourceDir);
-
-            if (dir.Exists)
-            {
-                DirectoryInfo[] dirs = dir.GetDirectories();
-
-                if (!Directory.Exists(destinationDir))
-                {
-                    Directory.CreateDirectory(destinationDir);
-                }
-
-                foreach (FileInfo file in dir.GetFiles())
-                {
-                    if (file.Name != _config.BackupScreenshotName)
-                    {
-                        string targetFilePath = Path.Combine(destinationDir, file.Name);
-                        file.CopyTo(targetFilePath, true);
-                    }
-                }
-
-                if (recursive)
-                {
-                    foreach (DirectoryInfo subDir in dirs)
-                    {
-                        string newDestinationDir = Path.Combine(destinationDir, subDir.Name);
-                        OverwriteDirectory(subDir.FullName, newDestinationDir, true);
-                    }
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            _loggingService.LogError($"{nameof(SaveService)}>{nameof(OverwriteDirectory)} - {e}");
-        }
     }
 
     private void DisableDuplicates(Guid? currentId, string location, ref List<SaveGame> saveGames)

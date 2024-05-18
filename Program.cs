@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using Galdr;
 using Scum_Bag.Commands;
 using Scum_Bag.Services;
@@ -11,21 +10,25 @@ internal class Program
     [STAThread]
     static void Main()
     {
+        Config config = new();
+        using LoggingService loggingService = new(config);
+
         try
         {
             using Galdr.Galdr galdr = new GaldrBuilder()
                 .SetTitle("Scum Bag - Save Manager")
                 .SetSize(1100, 775)
                 .SetMinSize(800, 600)
-                .AddSingleton<Config>()
+                .AddSingleton(config)
+                .AddSingleton(loggingService)
                 .AddSingleton<SaveGameCommands>()
                 .AddSingleton<SettingsCommands>()
                 .AddSingleton<BackupService>()
                 .AddSingleton<GameService>()
                 .AddSingleton<SaveService>()
                 .AddSingleton<ScreenshotService>()
-                .AddSingleton<LoggingService>()
                 .AddSingleton<SettingsService>()
+                .AddSingleton<FileService>()
 #if DEBUG
                 .SetDebug(true)
                 .SetPort(1314)
@@ -35,7 +38,7 @@ internal class Program
         }
         catch (Exception e)
         {
-            Debug.WriteLine(e.ToString());
+            loggingService.LogError($"{nameof(Program)}>{nameof(Main)} - {e}");
         }
     }
 }
