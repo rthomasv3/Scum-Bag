@@ -45,61 +45,36 @@ jobs:
 
     - name: Build Release
       if: matrix.platform == 'windows-latest'
-      run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
+      run: dotnet publish -c Debug -r win-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
     
     - name: Build Release
       if: matrix.platform == 'ubuntu-latest'
-      run: dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
+      run: dotnet publish -c Debug -r linux-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
 
     - name: Build Release
       if: matrix.platform == 'macos-latest'
-      run: dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
+      run: dotnet publish -c Debug -r osx-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
 
-    # Windows: Create artifact with specific files
-    - name: Prepare Windows Artifacts
-      if: matrix.platform == 'windows-latest'
-      run: |
-        mkdir artifact
-        copy ".\bin\Release\net8.0\win-x64\publish\ScumBag.exe" artifact\
-        copy ".\bin\Release\net8.0\win-x64\publish\webview.dll" artifact\
-        copy ".\bin\Release\net8.0\win-x64\publish\nfd.dll" artifact\
-      shell: cmd
-
+    # Windows: Archive all files from publish directory
     - name: Archive Windows Artifacts
       if: matrix.platform == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Scum_Bag_win-x64
-        path: artifact/*
+        name: Scum_Bag_Debug_win-x64
+        path: ./bin/Debug/net8.0/win-x64/publish/**
 
-    # Linux: Create artifact with specific files
-    - name: Prepare Linux Artifacts
-      if: matrix.platform == 'ubuntu-latest'
-      run: |
-        mkdir artifact
-        cp "./bin/Release/net8.0/linux-x64/publish/ScumBag" artifact/
-        cp ./bin/Release/net8.0/linux-x64/publish/libwebview.so artifact/ || cp ./bin/Release/net8.0/linux-x64/publish/webview.so artifact/ || true
-        cp ./bin/Release/net8.0/linux-x64/publish/libnfd.so artifact/ || cp ./bin/Release/net8.0/linux-x64/publish/nfd.so artifact/ || true
-
+    # Linux: Archive all files from publish directory
     - name: Archive Linux Artifacts
       if: matrix.platform == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Scum_Bag_linux-x64
-        path: artifact/*
+        name: Scum_Bag_Debug_linux-x64
+        path: ./bin/Debug/net8.0/linux-x64/publish/**
 
-    # macOS: Create artifact with specific files
-    - name: Prepare macOS Artifacts
-      if: matrix.platform == 'macos-latest'
-      run: |
-        mkdir artifact
-        cp "./bin/Release/net8.0/osx-x64/publish/ScumBag" artifact/
-        cp ./bin/Release/net8.0/osx-x64/publish/libwebview.dylib artifact/ || cp ./bin/Release/net8.0/osx-x64/publish/webview.dylib artifact/ || true
-        cp ./bin/Release/net8.0/osx-x64/publish/libnfd.dylib artifact/ || cp ./bin/Release/net8.0/osx-x64/publish/nfd.dylib artifact/ || true
-
+    # macOS: Archive all files from publish directory
     - name: Archive macOS Artifacts
       if: matrix.platform == 'macos-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Scum_Bag_osx-x64
-        path: artifact/*
+        name: Scum_Bag_Debug_osx-x64
+        path: ./bin/Debug/net8.0/osx-x64/publish/**
