@@ -48,15 +48,15 @@ jobs:
 
     - name: Build Release
       if: matrix.platform == 'windows-latest'
-      run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true
+      run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
     
     - name: Build Release
       if: matrix.platform == 'ubuntu-latest'
-      run: dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true
+      run: dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
 
     - name: Build Release
       if: matrix.platform == 'macos-latest'
-      run: dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true
+      run: dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
 
     # Windows: Create artifact with specific files
     - name: Prepare Windows Artifacts
