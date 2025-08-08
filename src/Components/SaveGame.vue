@@ -15,7 +15,8 @@
             <div class="flex flex-column gap-2">
                 <label for="location">Save Location</label>
                 <div class="flex gap-3">
-                    <InputText id="location" class="flex-grow-1" placeholder="Save location to backup..." v-model="location" />
+                    <InputText id="location" class="flex-grow-1" placeholder="Save location to backup..."
+                        v-model="location" />
                     <Button label="File" icon="pi pi-file" @click="openFile" />
                     <Button label="Directory" icon="pi pi-folder-open" @click="openDirectory" />
                 </div>
@@ -24,16 +25,20 @@
             <div v-if="backupLocation" class="flex flex-column gap-2">
                 <label for="backup-location">Backup Location</label>
                 <div class="flex gap-3">
-                    <InputText id="backup-location" class="flex-grow-1" placeholder="Save location to backup..." v-model="backupLocation" variant="filled" readonly />
-                    <Button v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy" severity="secondary" text @click="copyPath(backupLocation)" />
+                    <InputText id="backup-location" class="flex-grow-1" placeholder="Save location to backup..."
+                        v-model="backupLocation" variant="filled" readonly />
+                    <Button v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy"
+                        severity="secondary" text @click="copyPath(backupLocation)" />
                 </div>
             </div>
 
             <div class="flex flex-column gap-2 p-fluid">
                 <label for="game">Game</label>
                 <div class="flex gap-3">
-                    <AutoComplete v-model="game" class="flex-grow-1" :suggestions="filteredGames" placeholder="Game name..."  @complete="search" />
-                    <Button v-if="props.id !== 'new'" label="Launch" class="w-8rem" @click="launchGame" :loading="isLaunching" :disabled="!game" />
+                    <AutoComplete v-model="game" class="flex-grow-1" :suggestions="filteredGames"
+                        placeholder="Game name..." @complete="search" />
+                    <Button v-if="props.id !== 'new'" label="Launch" class="w-8rem" @click="launchGame"
+                        :loading="isLaunching" :disabled="!game" />
                 </div>
             </div>
 
@@ -42,7 +47,8 @@
                     <div class="field col">
                         <div class="flex flex-column gap-2">
                             <label for="frequency">Backup Frequency (mins)</label>
-                            <InputNumber class="flex-grow-1" v-model="frequency" inputId="frequency" showButtons buttonLayout="horizontal" :step="1" :min="1" :max="60">
+                            <InputNumber class="flex-grow-1" v-model="frequency" inputId="frequency" showButtons
+                                buttonLayout="horizontal" :step="1" :min="1" :max="60">
                                 <template #incrementbuttonicon>
                                     <span class="pi pi-plus" />
                                 </template>
@@ -56,7 +62,8 @@
                     <div class="field col">
                         <div class="flex flex-column gap-2">
                             <label for="max-backups">Max Backups</label>
-                            <InputNumber v-model="max" inputId="max-backups" showButtons buttonLayout="horizontal" :step="1" :min="1" :max="60">
+                            <InputNumber v-model="max" inputId="max-backups" showButtons buttonLayout="horizontal"
+                                :step="1" :min="1" :max="60">
                                 <template #incrementbuttonicon>
                                     <span class="pi pi-plus" />
                                 </template>
@@ -84,7 +91,8 @@
             <div class="flex flex-column gap-2 ">
                 <div class="grid">
                     <div class="col-fixed screenshot-col">
-                        <div class="flex flex-wrap justify-content-center align-content-center border-round border-1 border-200 h-full w-full">
+                        <div
+                            class="flex flex-wrap justify-content-center align-content-center border-round border-1 border-200 h-full w-full">
                             <div v-if="screenshot">
                                 <Image class="screenshot-small" :src="screenshot" width="250" alt="Image" preview />
                                 <Image class="screenshot-wide" :src="screenshot" height="235" alt="Image" preview />
@@ -96,29 +104,34 @@
                     </div>
 
                     <div class="col">
-                        <Listbox v-model="selectedBackup" class="w-full" :options="backups" listStyle="height:250px" emptyMessage="No Backups" @change="backupChanged">
+                        <Listbox v-model="selectedBackup" class="w-full" :options="backups" listStyle="height:250px"
+                            emptyMessage="No Backups" @change="backupChanged">
                             <template #option="slotProps">
                                 <div v-if="backupLocation" class="backup-option-wrapper">
                                     <div class="gap-2 backup-option align-items-center">
                                         <div>
                                             <Button class="tiny-button"
-                                                    :icon="slotProps.option.IsFavorite ? 'pi pi-star-fill' : 'pi pi-star'"
-                                                    :plain="!slotProps.option.IsFavorite" text
-                                                    @click.stop="toggleBackupFavorite(slotProps.option)" 
-                                                    v-tooltip.left="{ value: 'Prevents Deletion', showDelay: 1500 }" />
+                                                :icon="slotProps.option.isFavorite ? 'pi pi-star-fill' : 'pi pi-star'"
+                                                :plain="!slotProps.option.isFavorite" text
+                                                @click.stop="toggleBackupFavorite(slotProps.option)"
+                                                v-tooltip.left="{ value: 'Prevents Deletion', showDelay: 1500 }" />
                                         </div>
 
                                         <div class="backup-label">
-                                            <span>{{ new Date(slotProps.option.Time).toLocaleString() }}</span>
-                                            <span v-if="slotProps.option.Tag"> - {{ slotProps.option.Tag }}</span>
+                                            <span>{{ new Date(slotProps.option.time).toLocaleString() }}</span>
+                                            <span v-if="slotProps.option.tag"> - {{ slotProps.option.tag }}</span>
                                         </div>
-                                        
-                                        <div>
-                                            <Button class="backup-copy tiny-button" v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }" icon="pi pi-copy" 
-                                                    severity="secondary" text @click.stop="copyPath(slotProps.option.Directory)" />
 
-                                            <Button class="backup-copy tiny-button" v-tooltip.left="{ value: 'Options', showDelay: 1500 }" icon="pi pi-ellipsis-v" 
-                                                    severity="secondary" text @click.stop="showBackupDialog(slotProps.option)" />
+                                        <div>
+                                            <Button class="backup-copy tiny-button"
+                                                v-tooltip.left="{ value: 'Copy Path', showDelay: 1500 }"
+                                                icon="pi pi-copy" severity="secondary" text
+                                                @click.stop="copyPath(slotProps.option.directory)" />
+
+                                            <Button class="backup-copy tiny-button"
+                                                v-tooltip.left="{ value: 'Options', showDelay: 1500 }"
+                                                icon="pi pi-ellipsis-v" severity="secondary" text
+                                                @click.stop="showBackupDialog(slotProps.option)" />
                                         </div>
                                     </div>
                                 </div>
@@ -139,7 +152,8 @@
             </div>
         </div>
 
-        <BackupDialog ref="backupDialog" :selectedBackup="selectedBackup" @saved="onBackupSaved" @deleted="onBackupDeleted" />
+        <BackupDialog ref="backupDialog" :selectedBackup="selectedBackup" @saved="onBackupSaved"
+            @deleted="onBackupDeleted" />
     </div>
 </template>
 
@@ -193,13 +207,16 @@ onBeforeMount(async () => {
     await getBackups();
     selectedBackup.value = null;
     screenshot.value = null;
-    allGames.value = await galdrInvoke("getGames");
+
+    const gamesResult = await galdrInvoke("getGames");
+    allGames.value = gamesResult.games;
+
     supressChangeFlag = false;
 
     window.addEventListener(
         "saveUpdated",
         async (e) => {
-            if (e.detail && e.detail.Id === props.id) {
+            if (e.detail && e.detail.id === props.id) {
                 await getBackups();
             }
         },
@@ -228,7 +245,11 @@ watch(() => props.id, async () => {
     screenshot.value = null;
     hasChanges.value = false;
     supressChangeFlag = false;
-    document.getElementsByClassName("p-listbox-list-wrapper")[0].scrollTop = 0;
+
+    const listWrappers = document.getElementsByClassName("p-listbox-list-wrapper");
+    if (listWrappers && listWrappers.length > 0) {
+        listWrappers[0].scrollTop = 0;
+    }
 }, { flush: 'post' });
 
 watch(enabled, () => {
@@ -275,15 +296,15 @@ watch(max, () => {
 
 async function getSave() {
     if (props.id !== "new") {
-        const saveGame = await galdrInvoke("getSave", { id: props.id });
+        const saveGame = await galdrInvoke("getSave", { saveGame: { id: props.id } });
         if (saveGame) {
-            name.value = saveGame.Name;
-            enabled.value = saveGame.Enabled;
-            backupLocation.value = saveGame.BackupLocation;
-            game.value = saveGame.Game;
-            location.value = saveGame.SaveLocation;
-            frequency.value = saveGame.Frequency;
-            max.value = saveGame.MaxBackups;
+            name.value = saveGame.name;
+            enabled.value = saveGame.enabled;
+            backupLocation.value = saveGame.backupLocation;
+            game.value = saveGame.game;
+            location.value = saveGame.saveLocation;
+            frequency.value = saveGame.frequency;
+            max.value = saveGame.maxBackups;
         }
     } else {
         name.value = null;
@@ -299,32 +320,39 @@ async function getSave() {
 
 async function getBackups() {
     if (props.id !== "new") {
-        backups.value = await galdrInvoke("getBackups", { id: props.id });
+        const backupsResult = await galdrInvoke("getBackups", { saveGame: { id: props.id } });
+        backups.value = backupsResult.backups;
     } else {
         backups.value = [];
     }
 }
 
 async function backupChanged(e) {
-    var screenshotData = null
+    var screenshotResult = null
 
     if (e.value) {
-        screenshotData = await galdrInvoke("getScreenshot", { directory: e.value.Directory });
+        screenshotResult = await galdrInvoke("getScreenshot", { directory: e.value.directory });
     }
 
-    if (screenshotData) {
-        screenshot.value = "data:image/jpg;base64," + screenshotData; 
+    if (screenshotResult && screenshotResult.data) {
+        screenshot.value = "data:image/jpg;base64," + screenshotResult.data;
     } else {
         screenshot.value = null;
     }
 }
 
 async function openFile() {
-    location.value = await galdrInvoke("openFileDialog");
+    const openFileResult = await galdrInvoke("openFileDialog");
+    if (openFileResult && openFileResult.file) {
+        location.value = openFileResult.file;
+    }
 }
 
 async function openDirectory() {
-    location.value = await galdrInvoke("openDirectoryDialog");
+    const openDirectoryResult = await galdrInvoke("openDirectoryDialog");
+    if (openDirectoryResult && openDirectoryResult.directory) {
+        location.value = openDirectoryResult.directory;
+    }
 }
 
 function cancel() {
@@ -341,8 +369,8 @@ function deleteSave() {
         rejectClass: 'p-button-secondary p-button-outlined',
         acceptClass: 'p-button-danger',
         accept: async () => {
-            const deleted = await galdrInvoke("deleteSave", { Id: props.id });
-            if (deleted) {
+            const deleteResult = await galdrInvoke("deleteSave", { save: { id: props.id } });
+            if (deleteResult && deleteResult.success) {
                 toast.add({ severity: 'success', summary: 'Success', detail: 'Deleted successfully', group: 'tr', life: 3000 });
                 emit("deleted");
             } else {
@@ -350,43 +378,44 @@ function deleteSave() {
             }
         },
         reject: () => {
-            
+
         }
     });
 }
 
 async function save() {
     var success = false;
-    
+
     if (props.id === "new") {
         let saveGame = {
-            Id: uuidv4(),
-            Name: name.value,
-            Enabled: enabled.value,
-            SaveLocation: location.value,
-            Game: game.value,
-            Frequency: frequency.value,
-            MaxBackups: max.value
+            id: uuidv4(),
+            name: name.value,
+            enabled: enabled.value,
+            saveLocation: location.value,
+            game: game.value,
+            frequency: frequency.value,
+            maxBackups: max.value
         };
-        const id = await galdrInvoke("createSave", saveGame);
+        const createSaveResult = await galdrInvoke("createSave", { saveGame });
 
-        if (id) {
+        if (createSaveResult && createSaveResult.id) {
             success = true;
-            saveGame.Id = id;
+            saveGame.id = createSaveResult.id;
             emit("saved", saveGame);
         }
     } else {
         let saveGame = {
-            Id: props.id,
-            Name: name.value,
-            Enabled: enabled.value,
-            BackupLocation: backupLocation.value,
-            SaveLocation: location.value,
-            Game: game.value,
-            Frequency: frequency.value,
-            MaxBackups: max.value
+            id: props.id,
+            name: name.value,
+            enabled: enabled.value,
+            backupLocation: backupLocation.value,
+            saveLocation: location.value,
+            game: game.value,
+            frequency: frequency.value,
+            maxBackups: max.value
         };
-        success = await galdrInvoke("updateSave", saveGame);
+        const updateSaveResult = await galdrInvoke("updateSave", { saveGame });
+        success = updateSaveResult.success;
         if (success) {
             emit("saved", saveGame);
         }
@@ -402,17 +431,17 @@ async function save() {
 
 function uuidv4() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-    .replace(/[xy]/g, function (c) {
-        const r = Math.random() * 16 | 0, 
-            v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
+        .replace(/[xy]/g, function (c) {
+            const r = Math.random() * 16 | 0,
+                v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
 }
 
 async function manualBackup() {
-    const backedUp = await galdrInvoke("createManualBackup", { Id: props.id });
+    const backupResult = await galdrInvoke("createManualBackup", { save: { id: props.id } });
 
-    if (backedUp) {
+    if (backupResult && backupResult.success) {
         toast.add({ severity: 'success', summary: 'Success', detail: 'Backup created successfully', group: 'tr', life: 3000 });
     } else {
         toast.add({ severity: 'error', summary: 'Failed', detail: 'Backups are already up-to-date', group: 'tr', life: 3000 });
@@ -420,9 +449,9 @@ async function manualBackup() {
 }
 
 async function restore() {
-    const restored = await galdrInvoke("restore", { Id: props.id, Time: selectedBackup.value.Time });
+    const restoreResult = await galdrInvoke("restore", { restore: { id: props.id, time: selectedBackup.value.time } });
 
-    if (restored) {
+    if (restoreResult && restoreResult.success) {
         toast.add({ severity: 'success', summary: 'Success', detail: 'Save restored successfully', group: 'tr', life: 3000 });
     } else {
         toast.add({ severity: 'error', summary: 'Failed', detail: 'Save restore failed', group: 'tr', life: 3000 });
@@ -430,33 +459,35 @@ async function restore() {
 }
 
 function copyPath(path) {
-    navigator.clipboard.writeText(path).then(function() {
+    navigator.clipboard.writeText(path).then(function () {
         toast.add({ severity: 'info', summary: 'Copied', detail: 'Copied path to clipboard', group: 'tr', life: 3000 });
-    }, function(err) {
+    }, function (err) {
         toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to copy path to clipboard', group: 'tr', life: 3000 });
     });
 }
 
 async function toggleBackupFavorite(backup) {
-    const saved = await galdrInvoke("updateMetadata", {
-        SaveId: backup.SaveId,
-        Directory: backup.Directory,
-        Tag: backup.Tag,
-        IsFavorite: !backup.IsFavorite
+    const updateResult = await galdrInvoke("updateMetadata", {
+        backup: {
+            saveId: backup.saveId,
+            directory: backup.directory,
+            tag: backup.tag,
+            isFavorite: !backup.isFavorite
+        }
     });
 
-    if (saved) {
-        backup.IsFavorite = !backup.IsFavorite;
+    if (updateResult && updateResult.success) {
+        backup.isFavorite = !backup.isFavorite;
     }
 }
 
 function onBackupSaved(tag, isFavorite) {
-    selectedBackup.value.Tag = tag;
-    selectedBackup.value.IsFavorite =  isFavorite;
+    selectedBackup.value.tag = tag;
+    selectedBackup.value.isFavorite = isFavorite;
 }
 
 function onBackupDeleted(directory) {
-    const backup = backups.value.find(x => x.Directory === directory);
+    const backup = backups.value.find(x => x.directory === directory);
     if (backup) {
         const index = backups.value.indexOf(backup);
         backups.value.splice(index, 1);
@@ -469,11 +500,11 @@ async function launchGame() {
     if (game.value && game.value.trim()) {
         try {
             isLaunching.value = true;
-            const launched = await galdrInvoke("launchGame", { gameName: game.value });
-            if (!launched) {
+            const launchResult = await galdrInvoke("launchGame", { gameName: game.value });
+            if (!launchResult || !launchResult.success) {
                 toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to launch game', group: 'tr', life: 3000 });
             }
-        } catch(e) {
+        } catch (e) {
             console.error(e);
         } finally {
             isLaunching.value = false;
@@ -548,6 +579,4 @@ async function launchGame() {
 }
 </style>
 
-<style lang="scss" scoped>
-
-</style>
+<style lang="scss" scoped></style>

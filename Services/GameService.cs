@@ -6,9 +6,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Timers;
+using Gameloop.Vdf;
+using Gameloop.Vdf.Linq;
 using Microsoft.Win32;
 using Scum_Bag.DataAccess.Data.Steam;
-using VdfParser;
+using Scum_Bag.Models;
 
 namespace Scum_Bag.Services;
 
@@ -56,7 +58,6 @@ internal sealed class GameService : IDisposable
     private readonly LoggingService _loggingService;
     private readonly string _steamExePath;
     private readonly string _libraryPath;
-    private readonly VdfDeserializer _deserializer;
     private readonly Timer _steamLibraryTimer;
     private List<AppState> _steamApps;
 
@@ -79,7 +80,6 @@ internal sealed class GameService : IDisposable
 
         _libraryPath = Path.Combine(Path.Combine(Path.GetDirectoryName(_steamExePath), "steamapps"), "libraryfolders.vdf");
 
-        _deserializer = new();
         _steamApps = new();
 
         _steamLibraryTimer = new Timer(TimeSpan.FromMinutes(1));
@@ -94,9 +94,12 @@ internal sealed class GameService : IDisposable
 
     #region Public Methods
 
-    public IEnumerable<string> GetInstalledGames()
+    public GamesList GetInstalledGames()
     {
-        return _steamApps.Select(x => x.Name);
+        return new GamesList()
+        {
+            Games = _steamApps.Select(x => x.Name)
+        };
     }
 
     public IEnumerable<AppState> GetInstalledApps()
@@ -197,8 +200,44 @@ internal sealed class GameService : IDisposable
                     _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Libraries Path: {_libraryPath}");
                 }
 
-                FileStream libraryStream = File.OpenRead(_libraryPath);
-                Library library = _deserializer.Deserialize<Library>(libraryStream);
+                string libraryContent = File.ReadAllText(_libraryPath);
+                VProperty libraryVdf = VdfConvert.Deserialize(libraryContent);
+
+                Library library = new()
+                {
+                    LibraryFolders = []
+                };
+
+                VToken rootNode = libraryVdf.Value;
+
+                if (rootNode != null)
+                {
+                    VToken contentStatsId = rootNode["contentstatsid"];
+
+                    if (contentStatsId != null)
+                    {
+                        library.LibraryFolders.ContentStatsId = contentStatsId.ToString();
+                    }
+
+                    foreach (VProperty child in rootNode.Children<VProperty>())
+                    {
+                        if (int.TryParse(child.Key, out int folderIndex))
+                        {
+                            VToken folderData = child.Value;
+                            LibraryFolder libraryFolder = new()
+                            {
+                                Path = folderData["path"]?.ToString(),
+                                Label = folderData["label"]?.ToString()
+                            };
+
+                            if (!string.IsNullOrEmpty(libraryFolder.Path))
+                            {
+                                libraryFolder.Path = libraryFolder.Path.Trim('"');
+                                library.LibraryFolders[folderIndex] = libraryFolder;
+                            }
+                        }
+                    }
+                }
 
                 foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
                 {
@@ -226,35 +265,50 @@ internal sealed class GameService : IDisposable
                                             _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Entry Found: {acfFile}");
                                         }
 
-                                        App app = _deserializer.Deserialize<App>(acfText);
-                                        app.AppState.LibraryAppDir = Path.Combine(appsPath, "common");
+                                        VProperty appVdf = VdfConvert.Deserialize(acfText);
+                                        VToken appStateNode = appVdf.Value;
 
-                                        if (!_blackList.Contains(app.AppState.Name) && 
-                                            !app.AppState.Name.StartsWith("Proton ") && 
-                                            !app.AppState.Name.StartsWith("Steam Linux Runtime "))
+                                        if (appStateNode != null)
                                         {
-                                            app.AppState.Name = ConvertToAscii(app.AppState.Name);
-                                            _steamApps.Add(app.AppState);
-
-                                            if (logInfo)
+                                            AppState appState = new()
                                             {
-                                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
+                                                AppId = appStateNode["appid"]?.ToString(),
+                                                Name = appStateNode["name"]?.ToString(),
+                                                InstallDir = appStateNode["installdir"]?.ToString(),
+                                                LauncherPath = appStateNode["LauncherPath"]?.ToString(),
+                                                LibraryAppDir = Path.Combine(appsPath, "common")
+                                            };
+
+                                            App app = new() { AppState = appState };
+
+                                            if (!string.IsNullOrEmpty(app.AppState.Name) &&
+                                                !_blackList.Contains(app.AppState.Name) &&
+                                                !app.AppState.Name.StartsWith("Proton ") &&
+                                                !app.AppState.Name.StartsWith("Steam Linux Runtime "))
+                                            {
+                                                app.AppState.Name = ConvertToAscii(app.AppState.Name);
+                                                _steamApps.Add(app.AppState);
+
+                                                if (logInfo)
+                                                {
+                                                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
+                                                }
                                             }
-                                        }
-                                        else if (logInfo)
-                                        {
-                                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}"); 
+                                            else if (logInfo)
+                                            {
+                                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}");
+                                            }
                                         }
                                     }
                                     else if (logInfo)
                                     {
-                                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Invalid: {acfFile}"); 
+                                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Invalid: {acfFile}");
                                     }
                                 }
                             }
                             catch (Exception e)
                             {
-                                _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - {e}");
+                                _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Error processing {acfFile}: {e}");
                             }
                         }
                     }

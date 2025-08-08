@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
+using System.Text.Json;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.Models;
 
@@ -36,7 +36,7 @@ internal sealed class SaveService
 
     #region Public Methods
 
-    public IEnumerable<TreeNode> GetSaves()
+    public SaveGameNodes GetSaves()
     {
         List<TreeNode> saves = new();
 
@@ -44,7 +44,8 @@ internal sealed class SaveService
         {
             if (File.Exists(_config.SavesPath))
             {
-                IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+                IEnumerable<SaveGame> saveGames = JsonSerializer
+                    .Deserialize<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
                 IEnumerable<IGrouping<string, SaveGame>> saveGroups = saveGames.GroupBy(x => String.IsNullOrEmpty(x.Game) ? "Game" : x.Game);
 
                 foreach(IGrouping<string, SaveGame> group in saveGroups.OrderBy(x => x.Key))
@@ -75,7 +76,10 @@ internal sealed class SaveService
             _loggingService.LogError($"{nameof(SaveService)}>{nameof(GetSaves)} - {e}");
         }
 
-        return saves.AsReadOnly();
+        return new SaveGameNodes()
+        {
+            Nodes = saves.AsReadOnly()
+        };
     }
 
     public SaveGame GetSave(Guid id)
@@ -84,7 +88,8 @@ internal sealed class SaveService
 
         try
         {
-            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            IEnumerable<SaveGame> saveGames = JsonSerializer
+                .Deserialize<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
 
             foreach (SaveGame save in saveGames)
             {
@@ -109,7 +114,7 @@ internal sealed class SaveService
         return saveGame;
     }
 
-    public IEnumerable<Backup> GetBackups(Guid id)
+    public BackupsList GetBackups(Guid id)
     {
         List<Backup> backups = new();
 
@@ -158,7 +163,10 @@ internal sealed class SaveService
             _loggingService.LogError($"{nameof(SaveService)}>{nameof(GetBackups)} - {e}");
         }
 
-        return backups.AsReadOnly();
+        return new BackupsList()
+        {
+            Backups = backups.AsReadOnly()
+        };
     }
 
     public string GetScreenshot(string directory)
@@ -197,7 +205,8 @@ internal sealed class SaveService
             saveGame.Id = Guid.NewGuid();
             saveGame.BackupLocation = Path.Combine(_config.BackupsDirectory, saveGame.Id.ToString());
 
-            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            List<SaveGame> saveGames = JsonSerializer
+                .Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
 
             if (saveGame.Enabled)
             {
@@ -205,7 +214,7 @@ internal sealed class SaveService
             }
 
             saveGames.Add(saveGame);
-            string fileContent = JsonConvert.SerializeObject(saveGames);
+            string fileContent = JsonSerializer.Serialize(saveGames, SaveDataJsonSerializerContext.Default.Options);
             File.WriteAllText(_config.SavesPath, fileContent);
 
             _backupService.AddNewBackupTimer(saveGame);
@@ -226,7 +235,8 @@ internal sealed class SaveService
 
         try
         {
-            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            List<SaveGame> saveGames = JsonSerializer
+                .Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
 
             if (saveGame.Enabled)
             {
@@ -248,7 +258,7 @@ internal sealed class SaveService
                 }
             }
 
-            string fileContent = JsonConvert.SerializeObject(saveGames);
+            string fileContent = JsonSerializer.Serialize(saveGames, SaveDataJsonSerializerContext.Default.Options);
             File.WriteAllText(_config.SavesPath, fileContent);
 
             _backupService.UpdateSave(saveGame);
@@ -269,7 +279,8 @@ internal sealed class SaveService
 
         try
         {
-            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            List<SaveGame> saveGames = JsonSerializer
+                .Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
 
             for (int i = 0; i < saveGames.Count; ++i)
             {
@@ -281,7 +292,7 @@ internal sealed class SaveService
                 }
             }
 
-            string fileContent = JsonConvert.SerializeObject(saveGames);
+            string fileContent = JsonSerializer.Serialize(saveGames, SaveDataJsonSerializerContext.Default.Options);
             File.WriteAllText(_config.SavesPath, fileContent);
 
             _backupService.StopTimer(id);
@@ -365,7 +376,8 @@ internal sealed class SaveService
         {
             if (Directory.Exists(directory))
             {
-                List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+                List<SaveGame> saveGames = JsonSerializer
+                    .Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
                 
                 foreach (SaveGame saveGame in saveGames)
                 {
@@ -383,7 +395,7 @@ internal sealed class SaveService
 
                 if (updated)
                 {
-                    string fileContent = JsonConvert.SerializeObject(saveGames);
+                    string fileContent = JsonSerializer.Serialize(saveGames, SaveDataJsonSerializerContext.Default.Options);
                     File.WriteAllText(_config.SavesPath, fileContent);
                 }
             }
@@ -423,7 +435,8 @@ internal sealed class SaveService
 
         try
         {
-            List<SaveGame> saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            List<SaveGame> saveGames = JsonSerializer
+                .Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
             
             foreach (SaveGame saveGame in saveGames)
             {
@@ -437,7 +450,7 @@ internal sealed class SaveService
 
             if (deleted)
             {
-                string fileContent = JsonConvert.SerializeObject(saveGames);
+                string fileContent = JsonSerializer.Serialize(saveGames, SaveDataJsonSerializerContext.Default.Options);
                 File.WriteAllText(_config.SavesPath, fileContent);
             }
         }
@@ -453,7 +466,8 @@ internal sealed class SaveService
     {
         if (File.Exists(_config.SavesPath))
         {
-            IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            IEnumerable<SaveGame> saveGames = JsonSerializer
+                .Deserialize<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
 
             foreach (SaveGame saveGame in saveGames)
             {
@@ -475,7 +489,7 @@ internal sealed class SaveService
                 saveGame.BackupLocation = newLocation;
             }
 
-            string fileContent = JsonConvert.SerializeObject(saveGames);
+            string fileContent = JsonSerializer.Serialize(saveGames, SaveDataJsonSerializerContext.Default.Options);
             File.WriteAllText(_config.SavesPath, fileContent);
         }
     }

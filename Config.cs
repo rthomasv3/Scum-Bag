@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Newtonsoft.Json;
+using System.Text.Json;
 using Scum_Bag.DataAccess.Data;
 
 namespace Scum_Bag;
@@ -86,7 +86,7 @@ internal sealed class Config
 
         if (File.Exists(_settingsPath))
         {
-            settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(_settingsPath));
+            settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Options);
         }
 
         return settings;
@@ -95,7 +95,7 @@ internal sealed class Config
     public void SaveSettings(Settings settings)
     {
         _backupsDirectory = settings.BackupsDirectory;
-        string settingsFileContent = JsonConvert.SerializeObject(settings, Formatting.Indented);
+        string settingsFileContent = JsonSerializer.Serialize(settings, SaveDataJsonSerializerContext.Default.Options);
         File.WriteAllText(_settingsPath, settingsFileContent);
     }
 
@@ -107,7 +107,7 @@ internal sealed class Config
     {
         if (File.Exists(_settingsPath))
         {
-            Settings settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(_settingsPath));
+            Settings settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Options);
             _backupsDirectory = settings.BackupsDirectory;
         }
     }

@@ -1,4 +1,3 @@
-using Galdr;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.Services;
 
@@ -23,13 +22,11 @@ internal sealed class SettingsCommands
 
     #region Public Methods
 
-    [Command]
     public Settings GetSettings()
     {
         return _settingsService.GetSettings();
     }
 
-    [Command]
     public bool SaveSettings(Settings settings)
     {
         return _settingsService.SaveSettings(settings);

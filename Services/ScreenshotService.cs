@@ -6,9 +6,9 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Newtonsoft.Json;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.DataAccess.Data.Steam;
 using Scum_Bag.Models;
@@ -129,7 +129,8 @@ internal sealed class ScreenshotService
         {
             if (File.Exists(_config.SavesPath))
             {
-                IEnumerable<SaveGame> saveGames = JsonConvert.DeserializeObject<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath));
+                IEnumerable<SaveGame> saveGames = JsonSerializer
+                    .Deserialize<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
 
                 foreach(SaveGame saveGame in saveGames)
                 {

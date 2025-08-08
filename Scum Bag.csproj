@@ -8,9 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Galdr" Version="1.0.0" />
+    <PackageReference Include="Galdr.Native" Version="1.0.4" />
+    <PackageReference Include="Gameloop.Vdf" Version="0.6.2" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.3" />
-    <PackageReference Include="VdfConverter" Version="1.0.3" />
+    <PackageReference Include="System.Text.Json" Version="9.0.8" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Galdr;
+using Galdr.Native;
 using Scum_Bag.DataAccess.Data;
 
 namespace Scum_Bag.Services;

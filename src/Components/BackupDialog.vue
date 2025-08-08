@@ -1,8 +1,9 @@
 <template>
-    <Dialog v-model:visible="dialogVisible" modal header="Edit Backup" :style="{ width: '28rem' }" @show="onShown" @hide="onHide" :dismissableMask="true">
+    <Dialog v-model:visible="dialogVisible" modal header="Edit Backup" :style="{ width: '28rem' }" @show="onShown"
+        @hide="onHide" :dismissableMask="true">
         <div class="flex align-items-center gap-3 mb-4">
             <label for="time" class="font-semibold w-6rem">Time</label>
-            <span id="time" class="p-text-secondary ml-1">{{ new Date(selectedBackup.Time).toLocaleString() }}</span>
+            <span id="time" class="p-text-secondary ml-1">{{ new Date(selectedBackup.time).toLocaleString() }}</span>
         </div>
 
         <div class="flex align-items-center gap-3 mb-3">
@@ -12,8 +13,8 @@
 
         <div class="flex align-items-center gap-2 mb-5">
             <label for="favorite" class="font-semibold w-6rem">Favorite</label>
-            <Button :icon="isFavorite ? 'pi pi-star-fill' : 'pi pi-star'" :plain="!isFavorite" text @click="isFavorite = !isFavorite" 
-                    v-tooltip.right="{ value: 'Prevents Deletion', showDelay: 1500 }" />
+            <Button :icon="isFavorite ? 'pi pi-star-fill' : 'pi pi-star'" :plain="!isFavorite" text
+                @click="isFavorite = !isFavorite" v-tooltip.right="{ value: 'Prevents Deletion', showDelay: 1500 }" />
         </div>
 
         <div class="flex gap-2">
@@ -52,8 +53,8 @@ defineExpose({
 });
 
 function showDialog(backup) {
-    tag.value = backup?.Tag;
-    isFavorite.value = backup?.IsFavorite;
+    tag.value = backup?.tag;
+    isFavorite.value = backup?.isFavorite;
     dialogVisible.value = true;
 }
 
@@ -65,7 +66,7 @@ function onHide() {
     emit("hidden");
 }
 
-function deleteBackup() {
+function deleteBackup(event) {
     confirm.require({
         target: event.currentTarget,
         message: 'Do you want to delete this backup?',
@@ -76,13 +77,15 @@ function deleteBackup() {
         acceptLabel: 'Delete',
         group: 'popup',
         accept: async () => {
-            const deleted = await galdrInvoke("deleteBackup", {
-                SaveId: props.selectedBackup.SaveId,
-                Directory: props.selectedBackup.Directory,
+            const deleteResult = await galdrInvoke("deleteBackup", {
+                backup: {
+                    saveId: props.selectedBackup.saveId,
+                    directory: props.selectedBackup.directory,
+                }
             });
 
-            if (deleted) {
-                emit("deleted", props.selectedBackup.Directory);
+            if (deleteResult && deleteResult.success) {
+                emit("deleted", props.selectedBackup.directory);
                 dialogVisible.value = false;
                 toast.add({ severity: 'success', summary: 'Success', detail: 'Backup deleted', group: 'tr', life: 3000 });
             } else {
@@ -90,17 +93,19 @@ function deleteBackup() {
             }
         },
         reject: () => {
-            
+
         }
     });
 }
 
 async function save() {
     const saved = await galdrInvoke("updateMetadata", {
-        SaveId: props.selectedBackup.SaveId,
-        Directory: props.selectedBackup.Directory,
-        Tag: tag.value,
-        IsFavorite: isFavorite.value
+        backup: {
+            saveId: props.selectedBackup.saveId,
+            directory: props.selectedBackup.directory,
+            tag: tag.value,
+            isFavorite: isFavorite.value
+        }
     });
 
     if (saved) {
@@ -113,8 +118,6 @@ async function save() {
 }
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>
 
-<style lang="scss" scoped>
-</style>
+<style lang="scss" scoped></style>

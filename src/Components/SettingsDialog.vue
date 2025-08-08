@@ -1,9 +1,11 @@
 <template>
-    <Dialog v-model:visible="dialogVisible" modal header="Settings" :style="{ width: '40rem' }" @show="onShown" @hide="onHide" :dismissableMask="true">
+    <Dialog v-model:visible="dialogVisible" modal header="Settings" :style="{ width: '40rem' }" @show="onShown"
+        @hide="onHide" :dismissableMask="true">
         <div class="flex align-items-center gap-2 mb-5">
             <label for="theme" class="font-semibold w-10rem">Theme</label>
 
-            <Dropdown id="theme" v-model="currentTheme" :options="themes" optionLabel="name" placeholder="Select a Theme" class="flex-grow-1" @change="updateTheme" :disabled="isLoading">
+            <Dropdown id="theme" v-model="currentTheme" :options="themes" optionLabel="name"
+                placeholder="Select a Theme" class="flex-grow-1" @change="updateTheme" :disabled="isLoading">
                 <template #value="slotProps">
                     <div v-if="slotProps.value" class="flex align-items-center">
                         <div class="theme-preview" :style="'background-color: ' + slotProps.value.color"></div>
@@ -21,13 +23,15 @@
                 </template>
             </Dropdown>
 
-            <Button :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'" v-tooltip.right="{ value: 'Toggle Dark Mode', showDelay: 1500 }" 
-                     text rounded aria-label="Toggle Dark Mode" severity="secondary" @click="toggleDarkMode" :disabled="isLoading" />
+            <Button :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+                v-tooltip.right="{ value: 'Toggle Dark Mode', showDelay: 1500 }" text rounded
+                aria-label="Toggle Dark Mode" severity="secondary" @click="toggleDarkMode" :disabled="isLoading" />
         </div>
 
         <div class="flex align-items-center gap-2 mb-5">
             <label for="directory" class="font-semibold w-10rem">Backup Directory</label>
-            <InputText id="directory" class="flex-grow-1" placeholder="Backup directory..." v-model="backupLocation" @change="directoryChanged" :disabled="isLoading" />
+            <InputText id="directory" class="flex-grow-1" placeholder="Backup directory..." v-model="backupLocation"
+                @change="directoryChanged" :disabled="isLoading" />
             <Button icon="pi pi-folder-open" text severity="secondary" @click="openDirectory" :disabled="isLoading" />
         </div>
 
@@ -82,8 +86,8 @@ function initialize() {
     galdrInvoke("getSettings")
         .then(x => {
             settings.value = x;
-            currentTheme.value = themes.value.find(theme => theme.name == settings.value.Theme);
-            isDark.value = settings.value.IsDark;
+            currentTheme.value = themes.value.find(theme => theme.name == settings.value.theme);
+            isDark.value = settings.value.isDark;
             updateTheme();
             oldIsDark.value = isDark.value;
         });
@@ -102,7 +106,7 @@ function updateTheme() {
 
     var oldThemeName = "aura-" + (oldIsDark.value ? "dark-" : "light-") + oldTheme.value.name.toLowerCase();
     var newThemeName = "aura-" + (isDark.value ? "dark-" : "light-") + currentTheme.value.name.toLowerCase();
-    primeVue.changeTheme(oldThemeName, newThemeName, "theme-link", () => {});
+    primeVue.changeTheme(oldThemeName, newThemeName, "theme-link", () => { });
     oldTheme.value = currentTheme.value;
 }
 
@@ -128,9 +132,9 @@ function getSettings() {
         .then(x => {
             settings.value = x;
 
-            currentTheme.value = themes.value.find(theme => theme.name == settings.value.Theme);
-            isDark.value = settings.value.IsDark;
-            backupLocation.value = settings.value.BackupsDirectory;
+            currentTheme.value = themes.value.find(theme => theme.name == settings.value.theme);
+            isDark.value = settings.value.isDark;
+            backupLocation.value = settings.value.backupsDirectory;
 
             dialogVisible.value = true;
         })
@@ -145,16 +149,16 @@ function directoryChanged() {
 }
 
 async function openDirectory() {
-    const directory = await galdrInvoke("openDirectoryDialog");
-    if (directory) {
-        hasChanges.value = backupLocation.value != directory;
-        backupLocation.value = directory;
+    const directoryResult = await galdrInvoke("openDirectoryDialog");
+    if (directoryResult && directoryResult.directory) {
+        hasChanges.value = backupLocation.value != directoryResult.directory;
+        backupLocation.value = directoryResult.directory;
     }
 }
 
 async function cancel() {
-    currentTheme.value = themes.value.find(theme => theme.name == settings.value.Theme);
-    isDark.value = settings.value.IsDark;
+    currentTheme.value = themes.value.find(theme => theme.name == settings.value.theme);
+    isDark.value = settings.value.isDark;
     updateTheme();
     oldIsDark.value = isDark.value;
 
@@ -165,15 +169,17 @@ async function cancel() {
 async function save() {
     isLoading.value = true;
 
-    const saved = await galdrInvoke("saveSettings", {
-        Theme: currentTheme.value.name,
-        IsDark: isDark.value,
-        BackupsDirectory: backupLocation.value
+    const saveResult = await galdrInvoke("saveSettings", {
+        settings: {
+            theme: currentTheme.value.name,
+            isDark: isDark.value,
+            backupsDirectory: backupLocation.value
+        }
     });
 
     isLoading.value = false;
 
-    if (saved) {
+    if (saveResult.saved) {
         toast.add({ severity: 'success', summary: 'Success', detail: 'Settings saved successfully', group: 'tr', life: 3000 });
         shouldReset.value = false;
         dialogVisible.value = false;

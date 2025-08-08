@@ -7,19 +7,19 @@
                 </div>
 
                 <div class="flex justify-content-center">
-                    <Button class="tree-title-button" icon="pi pi-plus" severity="secondary" text aria-label="Add" 
-                            size="small" @click.stop="addSave()"
-                            v-tooltip.left="{ value: 'Add Save', showDelay: 1500 }" />
+                    <Button class="tree-title-button" icon="pi pi-plus" severity="secondary" text aria-label="Add"
+                        size="small" @click.stop="addSave()" v-tooltip.left="{ value: 'Add Save', showDelay: 1500 }" />
 
-                    <Button class="tree-title-button" icon="pi pi-cog" severity="secondary" text aria-label="Settings" 
-                            @click.stop="showSettings()" v-tooltip.left="{ value: 'Settings', showDelay: 1500 }" />
+                    <Button class="tree-title-button" icon="pi pi-cog" severity="secondary" text aria-label="Settings"
+                        @click.stop="showSettings()" v-tooltip.left="{ value: 'Settings', showDelay: 1500 }" />
                 </div>
             </div>
 
             <div class="tree-wrapper">
                 <Tree class="w-full h-full bg-transparent text-500" :value="nodes" :filter="true" filterMode="lenient"
-                      filterPlaceholder="Search saves..." scrollHeight="flex" :metaKeySelection="false" selectionMode="single"
-                       v-model:selectionKeys="selectedKeys" @node-select="onNodeSelected" @node-unselect="onNodeUnselected">
+                    filterPlaceholder="Search saves..." scrollHeight="flex" :metaKeySelection="false"
+                    selectionMode="single" v-model:selectionKeys="selectedKeys" @node-select="onNodeSelected"
+                    @node-unselect="onNodeUnselected">
                     <template #default="slotProps">
                         <div class="tree-node">
                             <div class="tree-node-label">
@@ -32,7 +32,8 @@
         </SplitterPanel>
 
         <SplitterPanel class="panel" :size="75" :minSize="20">
-            <SaveGame v-if="selectedId" :id="selectedId" @cancelled="onCancelled" @deleted="onDeleted" @saved="onSaved" @changed="onChanged" />
+            <SaveGame v-if="selectedId" :id="selectedId" @cancelled="onCancelled" @deleted="onDeleted" @saved="onSaved"
+                @changed="onChanged" />
             <div v-else class="flex flex-column flex-grow-1 justify-content-center">
                 <span class="text-center text-color-secondary">Select or create a save to get started.</span>
             </div>
@@ -102,8 +103,8 @@ async function onDeleted() {
 }
 
 async function onSaved(e) {
-    selectedId.value = e.Id;
-    selectedKeys.value = { [e.Id]: true };
+    selectedId.value = e.id;
+    selectedKeys.value = { [e.id]: true };
     hasUnsavedChanges.value = false;
     await getSaves();
 }
@@ -113,7 +114,8 @@ async function onChanged() {
 }
 
 async function getSaves() {
-    nodes.value = await galdrInvoke("getSaves");
+    const getSavesResult = await galdrInvoke("getSaves");
+    nodes.value = getSavesResult.nodes;
 }
 
 function confirmChangeSelected(key) {
@@ -142,7 +144,8 @@ function showSettings() {
 </script>
 
 <style>
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -156,7 +159,7 @@ html, body {
     flex-grow: 1;
 }
 
-.p-tree .p-tree-container .p-treenode:focus > .p-treenode-content {
+.p-tree .p-tree-container .p-treenode:focus>.p-treenode-content {
     outline: none;
 }
 
@@ -176,16 +179,16 @@ html, body {
 }
 
 ::-webkit-scrollbar {
-  width: 9px;
+    width: 9px;
 }
 
 ::-webkit-scrollbar-track {
-  border-radius: 4px;
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--surface-300);
-  border-radius: 4px;
+    background: var(--surface-300);
+    border-radius: 4px;
 }
 
 .p-splitter-gutter-handle {
@@ -195,7 +198,7 @@ html, body {
 
 <style scoped>
 .splitter {
-    background-color: transparent;
+    background-color: var(--surface-0);
     border: none;
     display: flex;
     height: 100%;

@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Timers;
-using Galdr;
-using Newtonsoft.Json;
+using Galdr.Native;
 using Scum_Bag.DataAccess.Data;
 
 namespace Scum_Bag.Services;
@@ -263,7 +263,7 @@ internal sealed class BackupService
                         }
 
                         backedUp = true;
-                        _eventService.PublishEvent("saveUpdated", new { Id = id });
+                        _eventService.PublishEvent("saveUpdated", $"{{ id: \"{id}\" }}");
                     }
                 }
             }
@@ -320,7 +320,7 @@ internal sealed class BackupService
 
         try
         {
-            saveGames = JsonConvert.DeserializeObject<List<SaveGame>>(File.ReadAllText(_config.SavesPath));
+            saveGames = JsonSerializer.Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
         }
         catch (Exception e)
         {
