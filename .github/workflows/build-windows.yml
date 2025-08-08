@@ -63,7 +63,7 @@ jobs:
       if: matrix.platform == 'windows-latest'
       run: |
         mkdir artifact
-        copy ".\bin\Release\net8.0\win-x64\publish\Scum Bag.exe" artifact\
+        copy ".\bin\Release\net8.0\win-x64\publish\ScumBag.exe" artifact\
         copy ".\bin\Release\net8.0\win-x64\publish\webview.dll" artifact\
         copy ".\bin\Release\net8.0\win-x64\publish\nfd.dll" artifact\
       shell: cmd
@@ -80,7 +80,7 @@ jobs:
       if: matrix.platform == 'ubuntu-latest'
       run: |
         mkdir artifact
-        cp "./bin/Release/net8.0/linux-x64/publish/Scum Bag" artifact/
+        cp "./bin/Release/net8.0/linux-x64/publish/ScumBag" artifact/
         cp ./bin/Release/net8.0/linux-x64/publish/libwebview.so artifact/ || cp ./bin/Release/net8.0/linux-x64/publish/webview.so artifact/ || true
         cp ./bin/Release/net8.0/linux-x64/publish/libnfd.so artifact/ || cp ./bin/Release/net8.0/linux-x64/publish/nfd.so artifact/ || true
 
@@ -96,7 +96,7 @@ jobs:
       if: matrix.platform == 'macos-latest'
       run: |
         mkdir artifact
-        cp "./bin/Release/net8.0/osx-x64/publish/Scum Bag" artifact/
+        cp "./bin/Release/net8.0/osx-x64/publish/ScumBag" artifact/
         cp ./bin/Release/net8.0/osx-x64/publish/libwebview.dylib artifact/ || cp ./bin/Release/net8.0/osx-x64/publish/webview.dylib artifact/ || true
         cp ./bin/Release/net8.0/osx-x64/publish/libnfd.dylib artifact/ || cp ./bin/Release/net8.0/osx-x64/publish/nfd.dylib artifact/ || true
 
