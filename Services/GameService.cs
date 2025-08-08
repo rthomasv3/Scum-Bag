@@ -200,122 +200,129 @@ internal sealed class GameService : IDisposable
                     _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Libraries Path: {_libraryPath}");
                 }
 
-                string libraryContent = File.ReadAllText(_libraryPath);
-                VProperty libraryVdf = VdfConvert.Deserialize(libraryContent);
-
-                Library library = new()
+                if (File.Exists(_libraryPath))
                 {
-                    LibraryFolders = []
-                };
+                    string libraryContent = File.ReadAllText(_libraryPath);
+                    VProperty libraryVdf = VdfConvert.Deserialize(libraryContent);
 
-                VToken rootNode = libraryVdf.Value;
-
-                if (rootNode != null)
-                {
-                    VToken contentStatsId = rootNode["contentstatsid"];
-
-                    if (contentStatsId != null)
+                    Library library = new()
                     {
-                        library.LibraryFolders.ContentStatsId = contentStatsId.ToString();
+                        LibraryFolders = []
+                    };
+
+                    VToken rootNode = libraryVdf.Value;
+
+                    if (rootNode != null)
+                    {
+                        VToken contentStatsId = rootNode["contentstatsid"];
+
+                        if (contentStatsId != null)
+                        {
+                            library.LibraryFolders.ContentStatsId = contentStatsId.ToString();
+                        }
+
+                        foreach (VProperty child in rootNode.Children<VProperty>())
+                        {
+                            if (int.TryParse(child.Key, out int folderIndex))
+                            {
+                                VToken folderData = child.Value;
+                                LibraryFolder libraryFolder = new()
+                                {
+                                    Path = folderData["path"]?.ToString(),
+                                    Label = folderData["label"]?.ToString()
+                                };
+
+                                if (!string.IsNullOrEmpty(libraryFolder.Path))
+                                {
+                                    libraryFolder.Path = libraryFolder.Path.Trim('"');
+                                    library.LibraryFolders[folderIndex] = libraryFolder;
+                                }
+                            }
+                        }
                     }
 
-                    foreach (VProperty child in rootNode.Children<VProperty>())
+                    foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
                     {
-                        if (int.TryParse(child.Key, out int folderIndex))
-                        {
-                            VToken folderData = child.Value;
-                            LibraryFolder libraryFolder = new()
-                            {
-                                Path = folderData["path"]?.ToString(),
-                                Label = folderData["label"]?.ToString()
-                            };
+                        string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
 
-                            if (!string.IsNullOrEmpty(libraryFolder.Path))
+                        if (Directory.Exists(appsPath))
+                        {
+                            if (logInfo)
                             {
-                                libraryFolder.Path = libraryFolder.Path.Trim('"');
-                                library.LibraryFolders[folderIndex] = libraryFolder;
+                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Found: {appsPath}");
                             }
+
+                            foreach (string acfFile in Directory.EnumerateFiles(appsPath, "*.acf"))
+                            {
+                                try
+                                {
+                                    if (File.Exists(acfFile))
+                                    {
+                                        string acfText = File.ReadAllText(acfFile);
+
+                                        if (acfText.StartsWith("\"AppState\""))
+                                        {
+                                            if (logInfo)
+                                            {
+                                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Entry Found: {acfFile}");
+                                            }
+
+                                            VProperty appVdf = VdfConvert.Deserialize(acfText);
+                                            VToken appStateNode = appVdf.Value;
+
+                                            if (appStateNode != null)
+                                            {
+                                                AppState appState = new()
+                                                {
+                                                    AppId = appStateNode["appid"]?.ToString(),
+                                                    Name = appStateNode["name"]?.ToString(),
+                                                    InstallDir = appStateNode["installdir"]?.ToString(),
+                                                    LauncherPath = appStateNode["LauncherPath"]?.ToString(),
+                                                    LibraryAppDir = Path.Combine(appsPath, "common")
+                                                };
+
+                                                App app = new() { AppState = appState };
+
+                                                if (!string.IsNullOrEmpty(app.AppState.Name) &&
+                                                    !_blackList.Contains(app.AppState.Name) &&
+                                                    !app.AppState.Name.StartsWith("Proton ") &&
+                                                    !app.AppState.Name.StartsWith("Steam Linux Runtime "))
+                                                {
+                                                    app.AppState.Name = ConvertToAscii(app.AppState.Name);
+                                                    _steamApps.Add(app.AppState);
+
+                                                    if (logInfo)
+                                                    {
+                                                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
+                                                    }
+                                                }
+                                                else if (logInfo)
+                                                {
+                                                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}");
+                                                }
+                                            }
+                                        }
+                                        else if (logInfo)
+                                        {
+                                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Invalid: {acfFile}");
+                                        }
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Error processing {acfFile}: {e}");
+                                }
+                            }
+                        }
+                        else if (logInfo)
+                        {
+                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Invalid: {appsPath}");
                         }
                     }
                 }
-
-                foreach (LibraryFolder libraryFolder in library.LibraryFolders.Values)
+                else
                 {
-                    string appsPath = Path.Combine(libraryFolder.Path, "steamapps");
-
-                    if (Directory.Exists(appsPath))
-                    {
-                        if (logInfo)
-                        {
-                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Found: {appsPath}");
-                        }
-
-                        foreach (string acfFile in Directory.EnumerateFiles(appsPath, "*.acf"))
-                        {
-                            try
-                            {
-                                if (File.Exists(acfFile))
-                                {
-                                    string acfText = File.ReadAllText(acfFile);
-
-                                    if (acfText.StartsWith("\"AppState\""))
-                                    {
-                                        if (logInfo)
-                                        {
-                                            _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Entry Found: {acfFile}");
-                                        }
-
-                                        VProperty appVdf = VdfConvert.Deserialize(acfText);
-                                        VToken appStateNode = appVdf.Value;
-
-                                        if (appStateNode != null)
-                                        {
-                                            AppState appState = new()
-                                            {
-                                                AppId = appStateNode["appid"]?.ToString(),
-                                                Name = appStateNode["name"]?.ToString(),
-                                                InstallDir = appStateNode["installdir"]?.ToString(),
-                                                LauncherPath = appStateNode["LauncherPath"]?.ToString(),
-                                                LibraryAppDir = Path.Combine(appsPath, "common")
-                                            };
-
-                                            App app = new() { AppState = appState };
-
-                                            if (!string.IsNullOrEmpty(app.AppState.Name) &&
-                                                !_blackList.Contains(app.AppState.Name) &&
-                                                !app.AppState.Name.StartsWith("Proton ") &&
-                                                !app.AppState.Name.StartsWith("Steam Linux Runtime "))
-                                            {
-                                                app.AppState.Name = ConvertToAscii(app.AppState.Name);
-                                                _steamApps.Add(app.AppState);
-
-                                                if (logInfo)
-                                                {
-                                                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Found: {app.AppState.Name}");
-                                                }
-                                            }
-                                            else if (logInfo)
-                                            {
-                                                _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Skipped: {app.AppState.Name}");
-                                            }
-                                        }
-                                    }
-                                    else if (logInfo)
-                                    {
-                                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam App Invalid: {acfFile}");
-                                    }
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                _loggingService.LogError($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Error processing {acfFile}: {e}");
-                            }
-                        }
-                    }
-                    else if (logInfo)
-                    {
-                        _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Library Invalid: {appsPath}");
-                    }
+                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Libraries Not Found");
                 }
 
                 if (logInfo)
