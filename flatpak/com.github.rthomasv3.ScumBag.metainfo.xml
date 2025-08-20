@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.github.rthomasv3.ScumBag</id>
+  <name>Scum Bag</name>
+  <summary>Save Scummer - Automatically backup and restore game save files</summary>
+
+  <description>
+    <p>
+      Scum Bag is a save file backup and restoration tool for any game or application. It automatically backs up your save files at configurable intervals and lets you restore to any backup point, making save scumming effortless.
+    </p>
+    <p>
+      Features:
+    </p>
+    <ul>
+      <li>Create save profiles with custom backup frequency and maximum backup limits</li>
+      <li>Restore to any backup point with a simple click</li>
+      <li>Only creates backups when save files actually change (no duplicate backups)</li>
+      <li>Reads Steam libraries to automatically find installed games</li>
+      <li>Takes screenshots of the game window when save files change</li>
+      <li>Works with any game or application that creates save files</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">com.github.rthomasv3.ScumBag.desktop</launchable>
+
+  <url type="homepage">https://github.com/rthomasv3/Scum-Bag</url>
+  <url type="bugtracker">https://github.com/rthomasv3/Scum-Bag/issues</url>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <developer_name>rthomasv3</developer_name>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <categories>
+    <category>Game</category>
+    <category>Utility</category>
+  </categories>
+
+  <keywords>
+    <keyword>save</keyword>
+    <keyword>backup</keyword>
+    <keyword>restore</keyword>
+    <keyword>gaming</keyword>
+    <keyword>steam</keyword>
+    <keyword>scum</keyword>
+  </keywords>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/rthomasv3/Scum-Bag/main/screenshot.png</image>
+      <caption>Main interface showing save profiles and backup management</caption>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="1.0.0" date="2025-01-01">
+      <description>
+        <p>Initial Flatpak release</p>
+        <ul>
+          <li>Automatic save file backup and restoration</li>
+          <li>Steam library integration</li>
+          <li>Screenshot capture support</li>
+          <li>Configurable backup profiles</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1" />
+</component>

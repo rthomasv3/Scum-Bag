@@ -25,9 +25,9 @@ Scum Bag is a place to hold all of your save backups. It automatically backs up 
     * Requires `flameshot` for screenshots
     * Requires [WebKit2GTK](https://webkitgtk.org/)
     * Debian-based
-        * `apt install libgtk-3-0 libwebkit2gtk-4.0-37`
+        * `apt install libgtk-3-0 libwebkit2gtk-4.1-dev`
     * Fedora-based
-        * `dnf install gtk3 webkit2gtk4.0`
+        * `dnf install gtk3 webkit2gtk4.1-devel`
     * BSD-based
         * `pkg install webkit2-gtk3`
         * Execution on BSD-based systems may require adding the `wxallowed` option to your fstab to bypass [W^X](https://en.wikipedia.org/wiki/W%5EX) memory protection for your executable (see [mount(8)](https://man.openbsd.org/mount.8))

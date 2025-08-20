@@ -1,0 +1,59 @@
+{
+  "app-id": "com.github.rthomasv3.ScumBag",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "47",
+  "sdk": "org.gnome.Sdk",
+  "command": "scum-bag",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--filesystem=~/.steam:ro",
+    "--filesystem=~/.local/share/Steam:ro",
+    "--filesystem=~/.var/app/com.valvesoftware.Steam:ro",
+    "--filesystem=/media:ro",
+    "--filesystem=/mnt:ro",
+    "--filesystem=/run/media:ro",
+    "--filesystem=xdg-config/Scum Bag:create",
+    "--talk-name=org.freedesktop.portal.Desktop",
+    "--talk-name=org.freedesktop.portal.OpenURI",
+    "--talk-name=org.freedesktop.portal.FileChooser",
+    "--talk-name=org.freedesktop.portal.Screenshot",
+    "--talk-name=org.freedesktop.Flatpak"
+  ],
+  "modules": [
+    {
+      "name": "scum-bag",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -Dm755 ScumBag /app/bin/scum-bag",
+        "install -Dm644 libnfd.so /app/lib/libnfd.so",
+        "install -Dm644 libwebview.so /app/lib/libwebview.so",
+        "install -Dm644 com.github.rthomasv3.ScumBag.desktop /app/share/applications/com.github.rthomasv3.ScumBag.desktop",
+        "install -Dm644 com.github.rthomasv3.ScumBag.png /app/share/icons/hicolor/128x128/apps/com.github.rthomasv3.ScumBag.png",
+        "install -Dm644 com.github.rthomasv3.ScumBag.metainfo.xml /app/share/metainfo/com.github.rthomasv3.ScumBag.metainfo.xml"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.0.0/ScumBag-Linux.zip",
+          "sha256": "REPLACE_WITH_ACTUAL_SHA256_HASH"
+        },
+        {
+          "type": "file",
+          "path": "com.github.rthomasv3.ScumBag.desktop"
+        },
+        {
+          "type": "file",
+          "path": "com.github.rthomasv3.ScumBag.png"
+        },
+        {
+          "type": "file",
+          "path": "com.github.rthomasv3.ScumBag.metainfo.xml"
+        }
+      ]
+    }
+  ]
+}

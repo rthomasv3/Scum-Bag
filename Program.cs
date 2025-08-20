@@ -18,10 +18,10 @@ internal class Program
 
         try
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                Galdr.Native.Generated.GaldrGeneratedInitializer.Initialize();
-            }
+            //if (!OperatingSystem.IsWindows())
+            //{
+            //    Galdr.Native.Generated.GaldrGeneratedInitializer.Initialize();
+            //}
 
             GaldrBuilder builder = new GaldrBuilder()
                 .SetTitle("Scum Bag - Save Manager")
@@ -37,15 +37,15 @@ internal class Program
                 .AddSingleton<SettingsService>()
                 .AddSingleton<FileService>();
 #if DEBUG
-            EmbeddedContent embeddedContent = new(embeddedNamespace: "Scum_Bag");
-            builder.SetContentProvider(embeddedContent);
-            builder.SetDebug(true);
-
-            //int port = 1314;
-            //UrlContent urlContent = new UrlContent($"http://localhost:{port}");
-            //builder.SetContentProvider(urlContent);
+            //EmbeddedContent embeddedContent = new(embeddedNamespace: "Scum_Bag");
+            //builder.SetContentProvider(embeddedContent);
             //builder.SetDebug(true);
-            //builder.SetPort(port);
+
+            int port = 1314;
+            UrlContent urlContent = new UrlContent($"http://localhost:{port}");
+            builder.SetContentProvider(urlContent);
+            builder.SetDebug(true);
+            builder.SetPort(port);
 #else
             EmbeddedContent embeddedContent = new(embeddedNamespace: "Scum_Bag");
             builder.SetContentProvider(embeddedContent);
