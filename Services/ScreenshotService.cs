@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.DataAccess.Data.Steam;
@@ -53,6 +52,9 @@ internal sealed class ScreenshotService
     private readonly LoggingService _loggingService;
     private readonly Dictionary<string, WatchLocation> _watchers;
     private bool _flameshotSetup;
+    private readonly bool _isInFlatpak;
+    private readonly string _flameshotCommand;
+    private readonly string _flameshotArgs;
 
     #endregion
 
@@ -64,6 +66,19 @@ internal sealed class ScreenshotService
         _gameService = gameService;
         _loggingService = loggingService;
         _watchers = new();
+
+        _isInFlatpak = File.Exists("/.flatpak-info");
+
+        if (_isInFlatpak)
+        {
+            _flameshotCommand = "flatpak-spawn";
+            _flameshotArgs = "--host flameshot";
+        }
+        else
+        {
+            _flameshotCommand = "flameshot";
+            _flameshotArgs = "";
+        }
 
         Initialize();
     }
@@ -197,70 +212,11 @@ internal sealed class ScreenshotService
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                if (Directory.Exists(gameDirectory))
-                {
-                    Process gameProcess = GetGameProcess(gameDirectory);
-
-                    if (gameProcess != null)
-                    {
-                        RECT rectangle = GetWindowRect(gameProcess.MainWindowHandle);
-
-                        if (rectangle.Width > 0 && rectangle.Height > 0)
-                        {
-                            bool removeWindowBorder = true; // may remove this later...
-
-                            // need to update these trim sizes to a percentage instead of fixed values
-                            int width = rectangle.Width - (removeWindowBorder ? _shadowSize * 2 : 0);
-                            int height = removeWindowBorder ? rectangle.Height - _headerHeight - _shadowSize : rectangle.Height;
-                            int left = rectangle.Left + (removeWindowBorder ? _shadowSize : 0);
-                            int top = rectangle.Top + (removeWindowBorder ? _headerHeight : 0);
-
-                            Bitmap bitmap = new Bitmap(width, height);
-
-                            using (Graphics g = Graphics.FromImage(bitmap))
-                            {
-                                g.CopyFromScreen(left, top, 0, 0, bitmap.Size, CopyPixelOperation.SourceCopy);
-                            }
-
-                            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
-
-                            if (File.Exists(savePath))
-                            {
-                                File.Delete(savePath);
-                            }
-
-                            bitmap.Save(savePath, ImageFormat.Jpeg);
-                        }
-                    }
-                    else
-                    {
-                        _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - Failed to find game process for directory {gameDirectory}");
-                    }
-                }
+                TakeWindowsScreenshot(saveDirectory, gameDirectory);
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                if (IsFlameshotSetup())
-                {
-                    string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
-
-                    if (File.Exists(savePath))
-                    {
-                        File.Delete(savePath);
-                    }
-
-                    ProcessStartInfo flameshotStartInfo = new()
-                    {
-                        FileName = "/bin/flameshot",
-                        Arguments = $"screen -p \"{savePath}\""
-                    };
-
-                    Process.Start(flameshotStartInfo);
-                }
-                else
-                {
-                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - flameshot not installed");
-                }
+                TakeLinuxScreenshot(saveDirectory);
             }
             else
             {
@@ -270,6 +226,88 @@ internal sealed class ScreenshotService
         catch (Exception e)
         {
             _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - {e}");
+        }
+    }
+
+    private void TakeWindowsScreenshot(string saveDirectory, string gameDirectory)
+    {
+        if (Directory.Exists(gameDirectory))
+        {
+            Process gameProcess = GetGameProcess(gameDirectory);
+
+            if (gameProcess != null)
+            {
+                RECT rectangle = GetWindowRect(gameProcess.MainWindowHandle);
+
+                if (rectangle.Width > 0 && rectangle.Height > 0)
+                {
+                    bool removeWindowBorder = true; // may remove this later...
+
+                    // need to update these trim sizes to a percentage instead of fixed values
+                    int width = rectangle.Width - (removeWindowBorder ? _shadowSize * 2 : 0);
+                    int height = removeWindowBorder ? rectangle.Height - _headerHeight - _shadowSize : rectangle.Height;
+                    int left = rectangle.Left + (removeWindowBorder ? _shadowSize : 0);
+                    int top = rectangle.Top + (removeWindowBorder ? _headerHeight : 0);
+
+                    Bitmap bitmap = new Bitmap(width, height);
+
+                    using (Graphics g = Graphics.FromImage(bitmap))
+                    {
+                        g.CopyFromScreen(left, top, 0, 0, bitmap.Size, CopyPixelOperation.SourceCopy);
+                    }
+
+                    string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+
+                    if (File.Exists(savePath))
+                    {
+                        File.Delete(savePath);
+                    }
+
+                    bitmap.Save(savePath, ImageFormat.Jpeg);
+                }
+            }
+            else
+            {
+                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - Failed to find game process for directory {gameDirectory}");
+            }
+        }
+    }
+
+    private void TakeLinuxScreenshot(string saveDirectory)
+    {
+        if (IsFlameshotSetup())
+        {
+            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+
+            if (File.Exists(savePath))
+            {
+                File.Delete(savePath);
+            }
+
+            string arguments = _isInFlatpak
+                ? $"{_flameshotArgs} screen --raw -p \"{ savePath}\""
+                : $"screen --raw -p \"{ savePath}\"";
+
+            ProcessStartInfo flameshotStartInfo = new()
+            {
+                FileName = _flameshotCommand,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+
+            Process process = Process.Start(flameshotStartInfo);
+            process.WaitForExit(2000);
+
+            if (!File.Exists(savePath))
+            {
+                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed");
+            }
+        }
+        else
+        {
+            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - flameshot not available");
         }
     }
 
@@ -341,44 +379,94 @@ internal sealed class ScreenshotService
     {
         if (!_flameshotSetup)
         {
-            // check if flameshot is installed
-            ProcessStartInfo flameshotStartInfo = new()
+            try
             {
-                FileName = "/bin/flameshot",
-                Arguments = "-v",
-                RedirectStandardOutput = true
-            };
-            Process process = Process.Start(flameshotStartInfo);
-            process.WaitForExit();
-            string flameshotOutput = process.StandardOutput.ReadToEnd();
+                ProcessStartInfo flameshotStartInfo;
 
-            if (Regex.IsMatch(flameshotOutput, @"Flameshot v\d+", RegexOptions.Compiled))
-            {
-                bool isConfigDefault = false;
-                string flameshotConfigPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "flameshot/flameshot.ini");
-                if (File.Exists(flameshotConfigPath))
+                if (_isInFlatpak)
                 {
-                    string currentConfig = File.ReadAllText(flameshotConfigPath).Trim();
-                    isConfigDefault = String.IsNullOrWhiteSpace(currentConfig) || 
-                                      currentConfig == "[General]" || 
-                                      currentConfig == "[General]\ncontrastOpacity=188";
+                    flameshotStartInfo = new()
+                    {
+                        FileName = "flatpak-spawn",
+                        Arguments = "--host which flameshot",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false
+                    };
                 }
                 else
                 {
-                    isConfigDefault = true;
+                    flameshotStartInfo = new()
+                    {
+                        FileName = "which",
+                        Arguments = "flameshot",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false
+                    };
                 }
 
-                if (isConfigDefault)
+                Process process = Process.Start(flameshotStartInfo);
+                process.WaitForExit();
+
+                if (process.ExitCode == 0)
                 {
-                    string flameshotConfig = "[General]\ncontrastOpacity=188\nshowDesktopNotification=false\n";
-                    File.WriteAllText(flameshotConfigPath, flameshotConfig);
-                }
+                    SetupFlameshotConfig();
 
-                _flameshotSetup = true;
+                    _flameshotSetup = true;
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)} - Flameshot detected and configured (Flatpak: {_isInFlatpak})");
+                }
+                else
+                {
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)} - Flameshot not found (Flatpak: {_isInFlatpak})");
+                }
+            }
+            catch (Exception e)
+            {
+                _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(IsFlameshotSetup)} - {e}");
             }
         }
 
         return _flameshotSetup;
+    }
+
+    private void SetupFlameshotConfig()
+    {
+        try
+        {
+            string flameshotConfigPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "flameshot/flameshot.ini"
+            );
+
+            bool isConfigDefault = false;
+            if (File.Exists(flameshotConfigPath))
+            {
+                string currentConfig = File.ReadAllText(flameshotConfigPath).Trim();
+                isConfigDefault = String.IsNullOrWhiteSpace(currentConfig) ||
+                                  currentConfig == "[General]" ||
+                                  currentConfig == "[General]\ncontrastOpacity=188";
+            }
+            else
+            {
+                isConfigDefault = true;
+                string configDir = Path.GetDirectoryName(flameshotConfigPath);
+                if (!Directory.Exists(configDir))
+                {
+                    Directory.CreateDirectory(configDir);
+                }
+            }
+
+            if (isConfigDefault)
+            {
+                string flameshotConfig = "[General]\ncontrastOpacity=188\nshowDesktopNotification=false\n";
+                File.WriteAllText(flameshotConfigPath, flameshotConfig);
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogError($"{nameof(ScreenshotService)}>{nameof(SetupFlameshotConfig)} - {e}");
+        }
     }
 
     #endregion
