@@ -88,6 +88,20 @@ jobs:
         name: Scum_Bag_linux-x64
         path: artifact/*
 
+
+    - name: Prepare Flatpak Files
+      if: matrix.platform == 'ubuntu-latest'
+      run: |
+        mkdir flatpak-files
+        cp flatpak/* flatpak-files/
+
+    - name: Archive Flatpak Files
+      if: matrix.platform == 'ubuntu-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: Scum_Bag_flatpak_files
+        path: flatpak-files/*
+
     # macOS: Create artifact with specific files
     - name: Prepare macOS Artifacts
       if: matrix.platform == 'macos-latest'
