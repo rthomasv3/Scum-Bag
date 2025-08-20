@@ -28,18 +28,17 @@
       "name": "scum-bag",
       "buildsystem": "simple",
       "build-commands": [
-        "install -Dm755 ScumBag /app/bin/scum-bag",
-        "install -Dm644 libnfd.so /app/lib/libnfd.so",
-        "install -Dm644 libwebview.so /app/lib/libwebview.so",
-        "install -Dm644 com.github.rthomasv3.ScumBag.desktop /app/share/applications/com.github.rthomasv3.ScumBag.desktop",
-        "install -Dm644 com.github.rthomasv3.ScumBag.png /app/share/icons/hicolor/128x128/apps/com.github.rthomasv3.ScumBag.png",
-        "install -Dm644 com.github.rthomasv3.ScumBag.metainfo.xml /app/share/metainfo/com.github.rthomasv3.ScumBag.metainfo.xml"
+        "bash setup.sh"
       ],
       "sources": [
         {
-          "type": "archive",
-          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.0.0/ScumBag-Linux.zip",
-          "sha256": "REPLACE_WITH_ACTUAL_SHA256_HASH"
+          "type": "file",
+          "path": "setup.sh"
+        },
+        {
+          "type": "file",
+          "path": "ScumBag-Linux.zip",
+          "sha256": "99ecc70e6a7ccf27734bdd44eb6822de6efff8cb99dfd660dd785a1a27c96fe2"
         },
         {
           "type": "file",
