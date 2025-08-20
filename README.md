@@ -34,7 +34,7 @@ Scum Bag is a place to hold all of your save backups. It automatically backs up 
 * macOS
     * Requires [WebKit](https://webkit.org/downloads/)
 
-On Linx you can also use the `libwebkit2gtk-4.1` package, but you'll need to add a missing symlink:
+On Linux you can also use the `libwebkit2gtk-4.1` package, but you'll need to add a missing symlink:
 ```
 sudo ln -s /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so.0 /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so
 ```
