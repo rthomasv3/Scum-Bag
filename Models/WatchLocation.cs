@@ -9,4 +9,5 @@ internal sealed class WatchLocation
     public Guid SaveGameId { get; set; }
     public string Location { get; set; }
     public string GameDirectory { get; set; }
+    public bool IsTakingScreenshot { get; set; }
 }

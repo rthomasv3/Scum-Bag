@@ -195,8 +195,20 @@ internal sealed class ScreenshotService
                 
                 if (_watchers.TryGetValue(directory, out WatchLocation watchLocation))
                 {
-                    string saveDirectory = Path.Combine(_config.BackupsDirectory, watchLocation.SaveGameId.ToString());
-                    TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
+                    if (!watchLocation.IsTakingScreenshot)
+                    {
+                        watchLocation.IsTakingScreenshot = true;
+
+                        try
+                        {
+                            string saveDirectory = Path.Combine(_config.BackupsDirectory, watchLocation.SaveGameId.ToString());
+                            TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
+                        }
+                        finally
+                        {
+                            watchLocation.IsTakingScreenshot = false;
+                        }
+                    }
                 }
             }
         }
@@ -281,13 +293,7 @@ internal sealed class ScreenshotService
 
             if (File.Exists(savePath))
             {
-                _loggingService.LogInfo("Old Screenshot exists - attempting delete");
                 File.Delete(savePath);
-                _loggingService.LogInfo($"Old Screenshot deleted: {!File.Exists(savePath)}");
-            }
-            else
-            {
-                _loggingService.LogInfo("Old Screenshot does not exist.");
             }
 
             string arguments = _isInFlatpak
