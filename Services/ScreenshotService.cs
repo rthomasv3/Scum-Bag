@@ -192,18 +192,21 @@ internal sealed class ScreenshotService
             if (!String.IsNullOrEmpty(args.FullPath) && !String.IsNullOrWhiteSpace(args.Name))
             {
                 string directory = args.FullPath.Replace(args.Name, "").TrimEnd('/', '\\');
-                
+
                 if (_watchers.TryGetValue(directory, out WatchLocation watchLocation))
                 {
-                    try
+                    if (Monitor.TryEnter(watchLocation, TimeSpan.FromSeconds(10)))
                     {
-                        if (Monitor.TryEnter(watchLocation, TimeSpan.FromSeconds(10)))
+                        try
                         {
                             string saveDirectory = Path.Combine(_config.BackupsDirectory, watchLocation.SaveGameId.ToString());
                             TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
                         }
+                        finally
+                        {
+                            Monitor.Exit(watchLocation);
+                        }
                     }
-                    catch { }
                 }
             }
         }
@@ -302,13 +305,24 @@ internal sealed class ScreenshotService
             };
 
             Process process = Process.Start(flameshotStartInfo);
-            process.WaitForExit(5000);
-            process.Close();
 
-            if (!File.Exists(savePath))
+            if (process.WaitForExit(10000))
             {
-                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed");
-                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - {_flameshotCommand} {arguments}");
+                process.Close();
+
+                Thread.Sleep(100);
+
+                if (!File.Exists(savePath))
+                {
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed");
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - {_flameshotCommand} {arguments}");
+                }
+            }
+            else
+            {
+                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Flameshot process timed out, killing it");
+                process.Kill();
+                process.Close();
             }
         }
         else
