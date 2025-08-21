@@ -195,20 +195,15 @@ internal sealed class ScreenshotService
                 
                 if (_watchers.TryGetValue(directory, out WatchLocation watchLocation))
                 {
-                    if (!watchLocation.IsTakingScreenshot)
+                    try
                     {
-                        watchLocation.IsTakingScreenshot = true;
-
-                        try
+                        if (Monitor.TryEnter(watchLocation, TimeSpan.FromSeconds(10)))
                         {
                             string saveDirectory = Path.Combine(_config.BackupsDirectory, watchLocation.SaveGameId.ToString());
                             TakeScreenshot(saveDirectory, watchLocation.GameDirectory);
                         }
-                        finally
-                        {
-                            watchLocation.IsTakingScreenshot = false;
-                        }
                     }
+                    catch { }
                 }
             }
         }
