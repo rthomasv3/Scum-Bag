@@ -277,16 +277,22 @@ internal sealed class ScreenshotService
     {
         if (IsFlameshotSetup())
         {
-            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName.Normalize());
 
             if (File.Exists(savePath))
             {
+                _loggingService.LogInfo("Old Screenshot exists - attempting delete");
                 File.Delete(savePath);
+                _loggingService.LogInfo($"Old Screenshot deleted: {!File.Exists(savePath)}");
+            }
+            else
+            {
+                _loggingService.LogInfo("Old Screenshot does not exist.");
             }
 
             string arguments = _isInFlatpak
-                ? $"{_flameshotArgs} screen -r -p \"{ savePath}\""
-                : $"screen -r -p \"{ savePath}\"";
+                ? $"{_flameshotArgs} screen -r -p \"{savePath}\""
+                : $"screen -r -p \"{savePath}\"";
 
             ProcessStartInfo flameshotStartInfo = new()
             {
@@ -295,7 +301,8 @@ internal sealed class ScreenshotService
             };
 
             Process process = Process.Start(flameshotStartInfo);
-            process.WaitForExit(2000);
+            process.WaitForExit(5000);
+            process.Close();
 
             if (!File.Exists(savePath))
             {
