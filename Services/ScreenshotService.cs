@@ -285,16 +285,13 @@ internal sealed class ScreenshotService
             }
 
             string arguments = _isInFlatpak
-                ? $"{_flameshotArgs} screen --raw -p \"{ savePath}\""
-                : $"screen --raw -p \"{ savePath}\"";
+                ? $"{_flameshotArgs} screen -r -p \"{ savePath}\""
+                : $"screen -r -p \"{ savePath}\"";
 
             ProcessStartInfo flameshotStartInfo = new()
             {
                 FileName = _flameshotCommand,
                 Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
             };
 
             Process process = Process.Start(flameshotStartInfo);
@@ -303,6 +300,7 @@ internal sealed class ScreenshotService
             if (!File.Exists(savePath))
             {
                 _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed");
+                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - {_flameshotCommand} {arguments}");
             }
         }
         else
