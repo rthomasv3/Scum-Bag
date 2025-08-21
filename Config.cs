@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
+using Microsoft.Win32;
 using Scum_Bag.DataAccess.Data;
 
 namespace Scum_Bag;
@@ -15,6 +17,7 @@ internal sealed class Config
     private readonly string _backupScreenshotName;
     private readonly string _settingsPath;
     private string _backupsDirectory;
+    private string _steamExePath;
 
     #endregion
 
@@ -71,6 +74,11 @@ internal sealed class Config
         get { return _settingsPath; }
     }
 
+    public string SteamExePath
+    {
+        get { return _steamExePath; }
+    }
+
     #endregion
 
     #region Public Methods
@@ -81,7 +89,8 @@ internal sealed class Config
         {
             Theme = "Indigo",
             IsDark = true,
-            BackupsDirectory = _backupsDirectory
+            BackupsDirectory = _backupsDirectory,
+            SteamExePath = _steamExePath,
         };
 
         if (File.Exists(_settingsPath))
@@ -95,6 +104,7 @@ internal sealed class Config
     public void SaveSettings(Settings settings)
     {
         _backupsDirectory = settings.BackupsDirectory;
+        _steamExePath = settings.SteamExePath;
         string settingsFileContent = JsonSerializer.Serialize(settings, SaveDataJsonSerializerContext.Default.Options);
         File.WriteAllText(_settingsPath, settingsFileContent);
     }
@@ -109,6 +119,24 @@ internal sealed class Config
         {
             Settings settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Options);
             _backupsDirectory = settings.BackupsDirectory;
+            _steamExePath = settings.SteamExePath;
+        }
+
+        if (String.IsNullOrWhiteSpace(_steamExePath) || !File.Exists(_steamExePath))
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _steamExePath = Registry.CurrentUser.OpenSubKey("Software\\Valve\\Steam").GetValue("SteamExe").ToString();
+            }
+            else
+            {
+                _steamExePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam/steam/steam.sh");
+
+                if (!File.Exists(_steamExePath))
+                {
+                    _steamExePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "snap/steam/common/.local/share/Steam/steam.sh");
+                }
+            }
         }
     }
 

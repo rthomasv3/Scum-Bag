@@ -56,29 +56,21 @@ internal sealed class GameService : IDisposable
     private static readonly HashSet<string> _blackList = ["Steamworks Common Redistributables"];
 
     private readonly LoggingService _loggingService;
-    private readonly string _steamExePath;
-    private readonly string _libraryPath;
     private readonly Timer _steamLibraryTimer;
+    private readonly Config _config;
+    private string _libraryPath;
     private List<AppState> _steamApps;
 
     #endregion
 
     #region Constructor
 
-    public GameService(LoggingService loggingService)
+    public GameService(LoggingService loggingService, Config config)
     {
         _loggingService = loggingService;
+        _config = config;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            _steamExePath = Registry.CurrentUser.OpenSubKey("Software\\Valve\\Steam").GetValue("SteamExe").ToString();
-        }
-        else
-        {
-            _steamExePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".steam/steam/steam.sh");
-        }
-
-        _libraryPath = Path.Combine(Path.Combine(Path.GetDirectoryName(_steamExePath), "steamapps"), "libraryfolders.vdf");
+        UpdateSteamLibraryPath();
 
         _steamApps = new();
 
@@ -127,7 +119,7 @@ internal sealed class GameService : IDisposable
                 try
                 {
                     Process gameProcess = null;
-                    Process steamProcess = Process.Start(_steamExePath, $"steam://launch/{appState.AppId}");
+                    Process steamProcess = Process.Start(_config.SteamExePath, $"steam://launch/{appState.AppId}");
 
                     HashSet<string> possibleGameExecutables = new();
 
@@ -177,9 +169,20 @@ internal sealed class GameService : IDisposable
         return launched;
     }
 
+    public void InitializeSteamLibrary()
+    {
+        UpdateSteamLibraryPath();
+        UpdateSteamLibrary();
+    }
+
     #endregion
 
     #region Private Methods
+
+    private void UpdateSteamLibraryPath()
+    {
+        _libraryPath = Path.Combine(Path.Combine(Path.GetDirectoryName(_config.SteamExePath), "steamapps"), "libraryfolders.vdf");
+    }
 
     private void SteamLibraryTimer_Elapsed(object sender, ElapsedEventArgs e)
     {
@@ -196,7 +199,7 @@ internal sealed class GameService : IDisposable
 
                 if (logInfo)
                 {
-                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Path: {_steamExePath}");
+                    _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Path: {_config.SteamExePath}");
                     _loggingService.LogInfo($"{nameof(GameService)}>{nameof(UpdateSteamLibrary)} - Steam Libraries Path: {_libraryPath}");
                 }
 

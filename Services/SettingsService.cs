@@ -14,19 +14,21 @@ internal sealed class SettingsService
     private readonly SaveService _saveService;
     private readonly EventService _eventService;
     private readonly FileService _fileService;
+    private readonly GameService _gameService;
 
     #endregion
 
     #region Constructor
 
     public SettingsService(Config config, LoggingService loggingService, SaveService saveService, 
-        EventService eventService, FileService fileService)
+        EventService eventService, FileService fileService, GameService gameService)
     {
         _config = config;
         _loggingService = loggingService;
         _saveService = saveService;
         _eventService = eventService;
         _fileService = fileService;
+        _gameService = gameService;
     }
 
     #endregion
@@ -70,6 +72,11 @@ internal sealed class SettingsService
                 {
                     _config.SaveSettings(settings);
                     _saveService.UpdateSavesBackupLocation();
+
+                    if (_config.SteamExePath != settings.SteamExePath)
+                    {
+                        _gameService.InitializeSteamLibrary();
+                    }
 
                     if (notifyLocationChanged)
                     {

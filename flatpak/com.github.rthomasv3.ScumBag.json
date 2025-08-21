@@ -12,6 +12,8 @@
     "--device=dri",
     "--filesystem=~/.steam:ro",
     "--filesystem=~/.local/share/Steam:ro",
+    "--filesystem=~/snap/steam/common/.local/share/Steam:ro",
+    "--filesystem=~/.var/app/com.valvesoftware.Steam/.local/share/Steam:ro",
     "--filesystem=~/.var/app/com.valvesoftware.Steam:ro",
     "--filesystem=/media:ro",
     "--filesystem=/mnt:ro",

@@ -35,6 +35,14 @@
             <Button icon="pi pi-folder-open" text severity="secondary" @click="openDirectory" :disabled="isLoading" />
         </div>
 
+        <div class="flex align-items-center gap-2 mb-5">
+            <label for="steamPath" class="font-semibold w-10rem">Steam Path</label>
+            <InputText id="steamPath" class="flex-grow-1" placeholder="Steam executable path..." v-model="steamPath"
+                @change="hasChanges = true" :disabled="isLoading" />
+            <Button icon="pi pi-folder-open" text severity="secondary" @click="openSteamFileDialog"
+                :disabled="isLoading" />
+        </div>
+
         <div class="flex mt-2 gap-2 justify-content-end">
             <Button label="Cancel" severity="secondary" @click="cancel" :disabled="isLoading" />
             <Button label="Save" @click="save" :disabled="!hasChanges || isLoading" :loading="isLoading" />
@@ -71,7 +79,8 @@ const themes = ref([
     { name: "Purple", color: "#a78bfa" },
     { name: "Teal", color: "#2dd4bf" },
 ]);
-const backupLocation = ref("")
+const backupLocation = ref("");
+const steamPath = ref("");
 const isLoading = ref(false);
 const shouldReset = ref(true);
 
@@ -135,6 +144,7 @@ function getSettings() {
             currentTheme.value = themes.value.find(theme => theme.name == settings.value.theme);
             isDark.value = settings.value.isDark;
             backupLocation.value = settings.value.backupsDirectory;
+            steamPath.value = settings.value.steamExePath;
 
             dialogVisible.value = true;
         })
@@ -156,6 +166,14 @@ async function openDirectory() {
     }
 }
 
+async function openSteamFileDialog() {
+    const fileResult = await galdrInvoke("openFileDialog");
+    if (fileResult && fileResult.file) {
+        hasChanges.value = steamPath != fileResult.file;
+        steamPath.value = fileResult.file;
+    }
+}
+
 async function cancel() {
     currentTheme.value = themes.value.find(theme => theme.name == settings.value.theme);
     isDark.value = settings.value.isDark;
@@ -173,7 +191,8 @@ async function save() {
         settings: {
             theme: currentTheme.value.name,
             isDark: isDark.value,
-            backupsDirectory: backupLocation.value
+            backupsDirectory: backupLocation.value,
+            steamExePath: steamPath.value,
         }
     });
 
