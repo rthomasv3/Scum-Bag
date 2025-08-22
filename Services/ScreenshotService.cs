@@ -326,50 +326,77 @@ internal sealed class ScreenshotService
                 ? $"{_flameshotArgs} screen -r -p \"{savePath}\""
                 : $"screen -r -p \"{savePath}\"";
 
-            ProcessStartInfo flameshotStartInfo = new()
+            for (int attempt = 1; attempt <= 3; attempt++)
             {
-                FileName = _flameshotCommand,
-                Arguments = arguments,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            flameshotStartInfo.EnvironmentVariables["DISPLAY"] = Environment.GetEnvironmentVariable("DISPLAY") ?? ":0";
-
-            if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("XAUTHORITY")))
-            {
-                flameshotStartInfo.EnvironmentVariables["XAUTHORITY"] = Environment.GetEnvironmentVariable("XAUTHORITY");
-            }
-
-            if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")))
-            {
-                flameshotStartInfo.EnvironmentVariables["WAYLAND_DISPLAY"] = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
-            }
-
-            Process process = Process.Start(flameshotStartInfo);
-
-            if (process.WaitForExit(3000))
-            {
-                process.Close();
-
-                Thread.Sleep(100);
-
-                if (!File.Exists(savePath))
+                ProcessStartInfo flameshotStartInfo = new()
                 {
-                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed");
-                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - {_flameshotCommand} {arguments}");
+                    FileName = _flameshotCommand,
+                    Arguments = arguments,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                flameshotStartInfo.EnvironmentVariables["DISPLAY"] = Environment.GetEnvironmentVariable("DISPLAY") ?? ":0";
+
+                if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("XAUTHORITY")))
+                {
+                    flameshotStartInfo.EnvironmentVariables["XAUTHORITY"] = Environment.GetEnvironmentVariable("XAUTHORITY");
                 }
-            }
-            else
-            {
-                process.Kill();
-                process.Close();
 
-                Thread.Sleep(100);
-
-                if (!File.Exists(savePath))
+                if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")))
                 {
-                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Flameshot process timed out, killed and screenshot not found.");
+                    flameshotStartInfo.EnvironmentVariables["WAYLAND_DISPLAY"] = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+                }
+
+                if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR")))
+                {
+                    flameshotStartInfo.EnvironmentVariables["XDG_RUNTIME_DIR"] = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+                }
+
+                int? exitCode = null;
+                Process process = Process.Start(flameshotStartInfo);
+
+                try
+                {
+                    if (process.WaitForExit(3000))
+                    {
+                        exitCode = process.ExitCode;
+                    }
+                    else
+                    {
+                        process.Kill();
+                    }
+
+                    Thread.Sleep(100);
+
+                    if (!File.Exists(savePath))
+                    {
+                        if (attempt == 3)
+                        {
+                            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - {_flameshotCommand} {arguments}");
+
+                            if (exitCode != null)
+                            {
+                                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed ({exitCode})");
+                            }
+                            else
+                            {
+                                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Flameshot process timed out: killed and screenshot not found");
+                            }
+                        }
+                        else
+                        {
+                            Thread.Sleep(250);
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                finally
+                {
+                    process.Close();
                 }
             }
         }
