@@ -134,6 +134,34 @@ internal sealed class ScreenshotService
         RemoveExistingWatcher(saveGameId);
     }
 
+    public bool TryGetLatestScreenshot(string saveLocation, out byte[] screenshotData)
+    {
+        screenshotData = null;
+
+        if (_watchers.TryGetValue(Path.GetDirectoryName(saveLocation), out WatchLocation watchLocation))
+        {
+            if (Monitor.TryEnter(watchLocation, TimeSpan.FromSeconds(5)))
+            {
+                try
+                {
+                    string saveDirectory = Path.Combine(_config.BackupsDirectory, watchLocation.SaveGameId.ToString());
+                    string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+
+                    if (File.Exists(savePath))
+                    {
+                        screenshotData = File.ReadAllBytes(savePath);
+                    }
+                }
+                finally
+                {
+                    Monitor.Exit(watchLocation);
+                }
+            }
+        }
+
+        return screenshotData != null;
+    }
+
     #endregion
 
     #region Private Methods
@@ -195,7 +223,7 @@ internal sealed class ScreenshotService
 
                 if (_watchers.TryGetValue(directory, out WatchLocation watchLocation))
                 {
-                    if (Monitor.TryEnter(watchLocation, TimeSpan.FromSeconds(10)))
+                    if (Monitor.TryEnter(watchLocation, TimeSpan.FromSeconds(5)))
                     {
                         try
                         {
@@ -287,7 +315,7 @@ internal sealed class ScreenshotService
     {
         if (IsFlameshotSetup())
         {
-            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName.Normalize());
+            string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
 
             if (File.Exists(savePath))
             {
@@ -302,11 +330,25 @@ internal sealed class ScreenshotService
             {
                 FileName = _flameshotCommand,
                 Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
             };
+
+            flameshotStartInfo.EnvironmentVariables["DISPLAY"] = Environment.GetEnvironmentVariable("DISPLAY") ?? ":0";
+
+            if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("XAUTHORITY")))
+            {
+                flameshotStartInfo.EnvironmentVariables["XAUTHORITY"] = Environment.GetEnvironmentVariable("XAUTHORITY");
+            }
+
+            if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")))
+            {
+                flameshotStartInfo.EnvironmentVariables["WAYLAND_DISPLAY"] = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+            }
 
             Process process = Process.Start(flameshotStartInfo);
 
-            if (process.WaitForExit(10000))
+            if (process.WaitForExit(3000))
             {
                 process.Close();
 
@@ -320,9 +362,15 @@ internal sealed class ScreenshotService
             }
             else
             {
-                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Flameshot process timed out, killing it");
                 process.Kill();
                 process.Close();
+
+                Thread.Sleep(100);
+
+                if (!File.Exists(savePath))
+                {
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Flameshot process timed out, killed and screenshot not found.");
+                }
             }
         }
         else

@@ -86,7 +86,11 @@
         </div>
 
         <div v-if="props.id !== 'new'" class=" mt-4 border-top-1 surface-border">
-            <h2 class="">Backups</h2>
+            <div class="flex flex-col justify-between items-center">
+                <h2 class="">Backups</h2>
+                <Button :icon="sortMode ? 'pi pi-sort-amount-down' : 'pi pi-sort-amount-up-alt'" severity="secondary"
+                    text @click="toggleSortMode" />
+            </div>
 
             <div class="flex flex-column gap-2 ">
                 <div class="grid">
@@ -184,6 +188,7 @@ const hasChanges = ref(false);
 const screenshot = ref(null);
 const backupDialog = ref();
 const isLaunching = ref(false);
+const sortMode = ref(false);
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -235,6 +240,8 @@ onBeforeMount(async () => {
         },
         false,
     );
+
+    sortMode.value = localStorage.getItem("backupsSortMode") ?? false;
 });
 
 watch(() => props.id, async () => {
@@ -322,6 +329,7 @@ async function getBackups() {
     if (props.id !== "new") {
         const backupsResult = await galdrInvoke("getBackups", { saveGame: { id: props.id } });
         backups.value = backupsResult.backups;
+        sortBackups();
     } else {
         backups.value = [];
     }
@@ -511,6 +519,16 @@ async function launchGame() {
         }
     }
 }
+
+function toggleSortMode() {
+    sortMode.value = !sortMode.value;
+    localStorage.setItem("backupsSortMode", sortMode.value);
+    sortBackups();
+}
+
+function sortBackups() {
+    backups.value = backups.value.sort((x, y) => sortMode.value ? y.time - x.time : x.time - y.time);
+}
 </script>
 
 <style scoped>
@@ -561,6 +579,14 @@ async function launchGame() {
 
 .screenshot-wide {
     display: block;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.items-center {
+    align-items: center;
 }
 
 @media screen and (min-width: 1100px) {

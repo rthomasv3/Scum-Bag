@@ -17,6 +17,7 @@ internal sealed class BackupService
     private readonly EventService _eventService;
     private readonly LoggingService _loggingService;
     private readonly FileService _fileService;
+    private readonly ScreenshotService _screenshotService;
     private readonly Dictionary<Guid, Timer> _backupTimers = new();
     private readonly Dictionary<Guid, ElapsedEventHandler> _backupTimerEvents = new();
 
@@ -24,12 +25,14 @@ internal sealed class BackupService
 
     #region Constructor
 
-    public BackupService(Config config, EventService eventService, LoggingService loggingService, FileService fileService)
+    public BackupService(Config config, EventService eventService, LoggingService loggingService, 
+        FileService fileService, ScreenshotService screenshotService)
     {
         _config = config;
         _eventService = eventService;
         _loggingService = loggingService;
         _fileService = fileService;
+        _screenshotService = screenshotService;
 
         Initialize();
     }
@@ -244,12 +247,10 @@ internal sealed class BackupService
                             File.Copy(saveGame.SaveLocation, filePath);
                         }
 
-                        string screenShotPath = Path.Combine(parentDirectory, _config.LatestScreenshotName);
-
-                        if (File.Exists(screenShotPath))
+                        if (_screenshotService.TryGetLatestScreenshot(saveGame.SaveLocation, out byte[] screenshotData))
                         {
                             string newScreenshotPath = Path.Combine(backupPath, _config.BackupScreenshotName);
-                            File.Copy(screenShotPath, newScreenshotPath, true);
+                            File.WriteAllBytes(newScreenshotPath, screenshotData);
                         }
 
                         // actual count is dirs length + 1 because a new backup was just made,
