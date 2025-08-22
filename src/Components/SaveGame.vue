@@ -208,6 +208,9 @@ const showBackupDialog = (backup) => {
 
 onBeforeMount(async () => {
     supressChangeFlag = true;
+
+    sortMode.value = localStorage.getItem("backupsSortMode") ?? false;
+
     await getSave();
     await getBackups();
     selectedBackup.value = null;
@@ -240,8 +243,6 @@ onBeforeMount(async () => {
         },
         false,
     );
-
-    sortMode.value = localStorage.getItem("backupsSortMode") ?? false;
 });
 
 watch(() => props.id, async () => {

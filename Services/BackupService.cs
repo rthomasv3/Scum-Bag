@@ -228,10 +228,7 @@ internal sealed class BackupService
 
                 if (Directory.Exists(lastBackupPath))
                 {
-                    string lastBackupHash = _fileService.GetHash(lastBackupLocation);
-                    string currentHash = _fileService.GetHash(saveGame.SaveLocation);
-
-                    if (lastBackupHash != currentHash)
+                    if (_fileService.HasChanges(lastBackupLocation, saveGame.SaveLocation))
                     {
                         string backupPath = Path.Combine(parentDirectory, DateTime.Now.Ticks.ToString());
 
