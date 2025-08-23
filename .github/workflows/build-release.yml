@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-latest, windows-latest]
+        platform: [macos-latest, macos-latest-arm64, ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.platform }}
 
@@ -43,17 +43,21 @@ jobs:
     - name: Test
       run: dotnet test --no-build --verbosity normal
 
-    - name: Build Release
+    - name: Build Windows Release
       if: matrix.platform == 'windows-latest'
       run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
     
-    - name: Build Release
+    - name: Build Linux Release
       if: matrix.platform == 'ubuntu-latest'
       run: dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
 
-    - name: Build Release
+    - name: Build Mac x86-64 Release
       if: matrix.platform == 'macos-latest'
       run: dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
+
+    - name: Build Mac arm64 Release
+      if: matrix.platform == 'macos-latest-arm64'
+      run: dotnet publish -c Release -r osx-arm64 --self-contained true -p:PublishTrimmed=True -p:TrimMode=Full -p:PublishAot=true -p:AssemblyName=ScumBag
 
     # Windows: Create artifact with specific files
     - name: Prepare Windows Artifacts
@@ -102,8 +106,8 @@ jobs:
         name: Scum_Bag_flatpak_files
         path: flatpak-files/*
 
-    # macOS: Create artifact with specific files
-    - name: Prepare macOS Artifacts
+    # macOS x86-64: Create artifact with specific files
+    - name: Prepare macOS x86-64 Artifacts
       if: matrix.platform == 'macos-latest'
       run: |
         mkdir artifact
@@ -116,4 +120,20 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Scum_Bag_osx-x64
+        path: artifact/*
+
+    # macOS arm64: Create artifact with specific files
+    - name: Prepare macOS arm64 Artifacts
+      if: matrix.platform == 'macos-latest-arm64'
+      run: |
+        mkdir artifact
+        cp "./bin/Release/net8.0/osx-arm64/publish/ScumBag" artifact/
+        cp ./bin/Release/net8.0/osx-arm64/publish/libwebview.dylib artifact/ || cp ./bin/Release/net8.0/osx-arm64/publish/webview.dylib artifact/ || true
+        cp ./bin/Release/net8.0/osx-arm64/publish/libnfd.dylib artifact/ || cp ./bin/Release/net8.0/osx-arm64/publish/nfd.dylib artifact/ || true
+
+    - name: Archive macOS Artifacts
+      if: matrix.platform == 'macos-latest-arm64'
+      uses: actions/upload-artifact@v4
+      with:
+        name: Scum_Bag_osx-arm64
         path: artifact/*
