@@ -126,14 +126,14 @@ jobs:
     - name: Prepare macOS arm64 Artifacts
       if: matrix.platform == 'macos-latest'
       run: |
-        mkdir artifact
-        cp "./bin/Release/net8.0/osx-arm64/publish/ScumBag" artifact/
-        cp ./bin/Release/net8.0/osx-arm64/publish/libwebview.dylib artifact/ || cp ./bin/Release/net8.0/osx-arm64/publish/webview.dylib artifact/ || true
-        cp ./bin/Release/net8.0/osx-arm64/publish/libnfd.dylib artifact/ || cp ./bin/Release/net8.0/osx-arm64/publish/nfd.dylib artifact/ || true
+        mkdir artifactArm
+        cp "./bin/Release/net8.0/osx-arm64/publish/ScumBag" artifactArm/
+        cp ./bin/Release/net8.0/osx-arm64/publish/libwebview.dylib artifactArm/ || cp ./bin/Release/net8.0/osx-arm64/publish/webview.dylib artifactArm/ || true
+        cp ./bin/Release/net8.0/osx-arm64/publish/libnfd.dylib artifactArm/ || cp ./bin/Release/net8.0/osx-arm64/publish/nfd.dylib artifactArm/ || true
 
     - name: Archive macOS Artifacts
       if: matrix.platform == 'macos-latest'
       uses: actions/upload-artifact@v4
       with:
         name: Scum_Bag_osx-arm64
-        path: artifact/*
+        path: artifactArm/*
