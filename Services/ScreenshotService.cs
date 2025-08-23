@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -11,37 +9,13 @@ using System.Threading;
 using Scum_Bag.DataAccess.Data;
 using Scum_Bag.DataAccess.Data.Steam;
 using Scum_Bag.Models;
+using Shutter.Abstractions;
+using Shutter.Models;
 
 namespace Scum_Bag.Services;
 
 internal sealed class ScreenshotService
 {
-    #region Native
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-
-        public int Width 
-        {
-            get { return Right - Left; }
-        }
-
-        public int Height 
-        {
-            get { return Bottom - Top; }
-        }
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    public static extern bool GetWindowRect(IntPtr hwnd, ref RECT rectangle);
-
-    #endregion
-
     #region Fields
 
     private static readonly int _headerHeight = 32;
@@ -50,6 +24,7 @@ internal sealed class ScreenshotService
     private readonly Config _config;
     private readonly GameService _gameService;
     private readonly LoggingService _loggingService;
+    private readonly IShutterService _shutterService;
     private readonly Dictionary<string, WatchLocation> _watchers;
     private bool _flameshotSetup;
     private readonly bool _isInFlatpak;
@@ -60,11 +35,13 @@ internal sealed class ScreenshotService
 
     #region Constructor
 
-    public ScreenshotService(Config config, GameService gameService, LoggingService loggingService)
+    public ScreenshotService(Config config, GameService gameService, LoggingService loggingService,
+        IShutterService shutterService)
     {
         _config = config;
         _gameService = gameService;
         _loggingService = loggingService;
+        _shutterService = shutterService;
         _watchers = new();
 
         _isInFlatpak = File.Exists("/.flatpak-info");
@@ -256,6 +233,10 @@ internal sealed class ScreenshotService
             {
                 TakeLinuxScreenshot(saveDirectory);
             }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                TakeMacScreenshot(saveDirectory);
+            }
             else
             {
                 _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - Skipping screenshot for platform {RuntimeInformation.OSDescription}");
@@ -275,43 +256,101 @@ internal sealed class ScreenshotService
 
             if (gameProcess != null)
             {
-                RECT rectangle = GetWindowRect(gameProcess.MainWindowHandle);
-
-                if (rectangle.Width > 0 && rectangle.Height > 0)
+                try
                 {
-                    bool removeWindowBorder = true; // may remove this later...
-
-                    // need to update these trim sizes to a percentage instead of fixed values
-                    int width = rectangle.Width - (removeWindowBorder ? _shadowSize * 2 : 0);
-                    int height = removeWindowBorder ? rectangle.Height - _headerHeight - _shadowSize : rectangle.Height;
-                    int left = rectangle.Left + (removeWindowBorder ? _shadowSize : 0);
-                    int top = rectangle.Top + (removeWindowBorder ? _headerHeight : 0);
-
-                    Bitmap bitmap = new Bitmap(width, height);
-
-                    using (Graphics g = Graphics.FromImage(bitmap))
+                    byte[] imageData = _shutterService.TakeScreenshot(new ScreenshotOptions()
                     {
-                        g.CopyFromScreen(left, top, 0, 0, bitmap.Size, CopyPixelOperation.SourceCopy);
-                    }
+                        Target = Shutter.Enums.CaptureTarget.Window,
+                        WindowHandle = gameProcess.MainWindowHandle,
+                        IncludeBorder = false,
+                        IncludeShadow = false,
+                        Format = Shutter.Enums.ImageFormat.Jpeg,
+                        JpegQuality = 85,
+                    });
 
-                    string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
-
-                    if (File.Exists(savePath))
+                    if (imageData != null)
                     {
-                        File.Delete(savePath);
-                    }
+                        string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
 
-                    bitmap.Save(savePath, ImageFormat.Jpeg);
+                        if (File.Exists(savePath))
+                        {
+                            File.Delete(savePath);
+                        }
+
+                        File.WriteAllBytes(savePath, imageData);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeWindowsScreenshot)} - Window screenshot failed: {e.ToString()}");
                 }
             }
             else
             {
-                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeScreenshot)} - Failed to find game process for directory {gameDirectory}");
+                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeWindowsScreenshot)} - Failed to find game process for directory {gameDirectory}");
             }
         }
     }
 
     private void TakeLinuxScreenshot(string saveDirectory)
+    {
+        try
+        {
+            byte[] imageData = _shutterService.TakeScreenshot(new ScreenshotOptions()
+            {
+                Target = Shutter.Enums.CaptureTarget.FullScreen,
+                Format = Shutter.Enums.ImageFormat.Jpeg,
+                JpegQuality = 85,
+            });
+
+            if (imageData != null)
+            {
+                string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+
+                if (File.Exists(savePath))
+                {
+                    File.Delete(savePath);
+                }
+
+                File.WriteAllBytes(savePath, imageData);
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot failed: {e.ToString()}");
+        }
+    }
+
+    private void TakeMacScreenshot(string saveDirectory)
+    {
+        try
+        {
+            byte[] imageData = _shutterService.TakeScreenshot(new ScreenshotOptions()
+            {
+                Target = Shutter.Enums.CaptureTarget.FullScreen,
+                Format = Shutter.Enums.ImageFormat.Jpeg,
+                JpegQuality = 85,
+            });
+
+            if (imageData != null)
+            {
+                string savePath = Path.Combine(saveDirectory, _config.LatestScreenshotName);
+
+                if (File.Exists(savePath))
+                {
+                    File.Delete(savePath);
+                }
+
+                File.WriteAllBytes(savePath, imageData);
+            }
+        }
+        catch (Exception e)
+        {
+            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeMacScreenshot)} - Screenshot failed: {e.ToString()}");
+        }
+    }
+
+    private void TakeLinuxScreenshotFlameshot(string saveDirectory)
     {
         if (IsFlameshotSetup())
         {
@@ -373,15 +412,15 @@ internal sealed class ScreenshotService
                     {
                         if (attempt == 3)
                         {
-                            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - {_flameshotCommand} {arguments}");
+                            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshotFlameshot)} - {_flameshotCommand} {arguments}");
 
                             if (exitCode != null)
                             {
-                                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Screenshot may have failed ({exitCode})");
+                                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshotFlameshot)} - Screenshot may have failed ({exitCode})");
                             }
                             else
                             {
-                                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - Flameshot process timed out: killed and screenshot not found");
+                                _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshotFlameshot)} - Flameshot process timed out: killed and screenshot not found");
                             }
                         }
                         else
@@ -402,29 +441,8 @@ internal sealed class ScreenshotService
         }
         else
         {
-            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshot)} - flameshot not available");
+            _loggingService.LogInfo($"{nameof(ScreenshotService)}>{nameof(TakeLinuxScreenshotFlameshot)} - flameshot not available");
         }
-    }
-
-    private static RECT GetWindowRect(IntPtr hwnd)
-    {
-        RECT rectangle = default;
-        int attempts = 0;
-
-        while (attempts++ < 5)
-        {
-            rectangle = new RECT();
-            GetWindowRect(hwnd, ref rectangle);
-
-            if (rectangle.Width > 0 && rectangle.Height > 0)
-            {
-                break;
-            }
-
-            Thread.Sleep(50);
-        }
-
-        return rectangle;
     }
 
     private HashSet<string> GetExecutables(string directory)

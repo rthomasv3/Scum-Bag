@@ -5,6 +5,8 @@ using Scum_Bag.DataAccess.Data;
 using Scum_Bag.Models;
 using Scum_Bag.Services;
 using SharpWebview.Content;
+using Shutter;
+using Shutter.Abstractions;
 
 namespace Scum_Bag;
 
@@ -35,7 +37,8 @@ internal class Program
                 .AddSingleton<SaveService>()
                 .AddSingleton<ScreenshotService>()
                 .AddSingleton<SettingsService>()
-                .AddSingleton<FileService>();
+                .AddSingleton<FileService>()
+                .AddSingleton<IShutterService, ShutterService>();
 #if DEBUG
             //EmbeddedContent embeddedContent = new(embeddedNamespace: "Scum_Bag");
             //builder.SetContentProvider(embeddedContent);
