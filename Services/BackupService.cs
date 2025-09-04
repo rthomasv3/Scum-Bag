@@ -318,7 +318,7 @@ internal sealed class BackupService
 
         try
         {
-            saveGames = JsonSerializer.Deserialize<List<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
+            saveGames = JsonSerializer.Deserialize(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.ListSaveGame);
         }
         catch (Exception e)
         {

@@ -95,7 +95,7 @@ internal sealed class Config
 
         if (File.Exists(_settingsPath))
         {
-            settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Options);
+            settings = JsonSerializer.Deserialize(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Settings);
         }
 
         return settings;
@@ -105,7 +105,7 @@ internal sealed class Config
     {
         _backupsDirectory = settings.BackupsDirectory;
         _steamExePath = settings.SteamExePath;
-        string settingsFileContent = JsonSerializer.Serialize(settings, SaveDataJsonSerializerContext.Default.Options);
+        string settingsFileContent = JsonSerializer.Serialize(settings, SaveDataJsonSerializerContext.Default.Settings);
         File.WriteAllText(_settingsPath, settingsFileContent);
     }
 
@@ -117,7 +117,7 @@ internal sealed class Config
     {
         if (File.Exists(_settingsPath))
         {
-            Settings settings = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Options);
+            Settings settings = JsonSerializer.Deserialize(File.ReadAllText(_settingsPath), SaveDataJsonSerializerContext.Default.Settings);
             _backupsDirectory = settings.BackupsDirectory;
             _steamExePath = settings.SteamExePath;
         }

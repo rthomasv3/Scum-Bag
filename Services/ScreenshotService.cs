@@ -18,9 +18,6 @@ internal sealed class ScreenshotService
 {
     #region Fields
 
-    private static readonly int _headerHeight = 32;
-    private static readonly int _shadowSize = 7;
-
     private readonly Config _config;
     private readonly GameService _gameService;
     private readonly LoggingService _loggingService;
@@ -150,7 +147,7 @@ internal sealed class ScreenshotService
             if (File.Exists(_config.SavesPath))
             {
                 IEnumerable<SaveGame> saveGames = JsonSerializer
-                    .Deserialize<IEnumerable<SaveGame>>(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.Options);
+                    .Deserialize(File.ReadAllText(_config.SavesPath), SaveDataJsonSerializerContext.Default.IEnumerableSaveGame);
 
                 foreach(SaveGame saveGame in saveGames)
                 {
