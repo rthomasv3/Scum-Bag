@@ -8,7 +8,6 @@ using System.Text;
 using System.Timers;
 using Gameloop.Vdf;
 using Gameloop.Vdf.Linq;
-using Microsoft.Win32;
 using Scum_Bag.DataAccess.Data.Steam;
 using Scum_Bag.Models;
 
@@ -149,7 +148,7 @@ internal sealed class GameService : IDisposable
                     int retryCount = 0;
                     while (gameProcess == null && retryCount++ < 10)
                     {
-                        System.Threading.Thread.Sleep(1000);
+                        System.Threading.Thread.Sleep(1500);
 
                         gameProcess = Process.GetProcesses()
                             .Where(x => possibleGameExecutables.Contains(x.ProcessName))
