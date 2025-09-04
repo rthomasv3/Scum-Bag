@@ -93,18 +93,27 @@ jobs:
         path: artifact/*
 
 
-    - name: Prepare Flatpak Files
+    - name: Prepare Flatpak Artifacts
       if: matrix.platform == 'ubuntu-latest'
       run: |
-        mkdir flatpak-files
-        cp flatpak/* flatpak-files/
+        mkdir flatpak-artifact
+        cp "./bin/Release/net8.0/linux-x64/publish/ScumBag" flatpak-artifact/
+        cp ./bin/Release/net8.0/linux-x64/publish/libwebview.so flatpak-artifact/ || cp ./bin/Release/net8.0/linux-x64/publish/webview.so flatpak-artifact/ || true
+        cp ./bin/Release/net8.0/linux-x64/publish/libnfd.so flatpak-artifact/ || cp ./bin/Release/net8.0/linux-x64/publish/nfd.so flatpak-artifact/ || true
+        cp flatpak/setup.sh flatpak-artifact/
+        cp flatpak/com.github.rthomasv3.ScumBag.desktop flatpak-artifact/
+        cp flatpak/com.github.rthomasv3.ScumBag.metainfo.xml flatpak-artifact/
+        cp flatpak/com.github.rthomasv3.ScumBag.64.png flatpak-artifact/
+        cp flatpak/com.github.rthomasv3.ScumBag.128.png flatpak-artifact/
+        cp flatpak/com.github.rthomasv3.ScumBag.256.png flatpak-artifact/
+        cp flatpak/com.github.rthomasv3.ScumBag.512.png flatpak-artifact/
 
-    - name: Archive Flatpak Files
+    - name: Archive Flatpak Artifacts
       if: matrix.platform == 'ubuntu-latest'
       uses: actions/upload-artifact@v4
       with:
-        name: Scum_Bag_flatpak_files
-        path: flatpak-files/*
+        name: Scum_Bag_linux-x64_flatpak
+        path: flatpak-artifact/*
 
     # macOS x86-64: Create artifact with specific files
     - name: Prepare macOS x86-64 Artifacts

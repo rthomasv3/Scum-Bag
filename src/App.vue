@@ -194,6 +194,10 @@ body {
 .p-splitter-gutter-handle {
     background: var(--surface-300) !important;
 }
+
+.p-splitter {
+    border-radius: 0px !important;
+}
 </style>
 
 <style scoped>

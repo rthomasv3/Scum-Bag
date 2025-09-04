@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Scum_Bag</RootNamespace>
-    <ApplicationIcon>wizard-round.ico</ApplicationIcon>
+    <ApplicationIcon>com.github.rthomasv3.ScumBag.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="wizard-round.ico" />
+    <Content Include="com.github.rthomasv3.ScumBag.ico" />
   </ItemGroup>
 
   <ItemGroup>
