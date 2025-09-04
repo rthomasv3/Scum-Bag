@@ -1,7 +1,12 @@
-﻿#!/bin/bash
-unzip ScumBag-Linux.zip
-mkdir -p /app/lib /app/bin
+﻿mkdir -p /app/lib /app/bin
 
+# Install icons
+install -Dm644 com.github.rthomasv3.ScumBag.64.png /app/share/icons/hicolor/64x64/apps/com.github.rthomasv3.ScumBag.png
+install -Dm644 com.github.rthomasv3.ScumBag.128.png /app/share/icons/hicolor/128x128/apps/com.github.rthomasv3.ScumBag.png
+install -Dm644 com.github.rthomasv3.ScumBag.256.png /app/share/icons/hicolor/256x256/apps/com.github.rthomasv3.ScumBag.png
+install -Dm644 com.github.rthomasv3.ScumBag.512.png /app/share/icons/hicolor/512x512/apps/com.github.rthomasv3.ScumBag.png
+
+# Install application
 install -Dm755 ScumBag /app/bin/ScumBag.real
 install -Dm644 libnfd.so /app/lib/libnfd.so
 install -Dm644 libwebview.so /app/lib/libwebview.so
@@ -25,7 +30,3 @@ chmod +x /app/bin/scum-bag
 # Install desktop files
 install -Dm644 com.github.rthomasv3.ScumBag.desktop /app/share/applications/com.github.rthomasv3.ScumBag.desktop
 install -Dm644 com.github.rthomasv3.ScumBag.metainfo.xml /app/share/metainfo/com.github.rthomasv3.ScumBag.metainfo.xml
-install -Dm644 com.github.rthomasv3.ScumBag.64.png /app/share/icons/hicolor/64x64/apps/com.github.rthomasv3.ScumBag.png
-install -Dm644 com.github.rthomasv3.ScumBag.128.png /app/share/icons/hicolor/128x128/apps/com.github.rthomasv3.ScumBag.png
-install -Dm644 com.github.rthomasv3.ScumBag.256.png /app/share/icons/hicolor/256x256/apps/com.github.rthomasv3.ScumBag.png
-install -Dm644 com.github.rthomasv3.ScumBag.512.png /app/share/icons/hicolor/512x512/apps/com.github.rthomasv3.ScumBag.png

@@ -34,26 +34,10 @@
       ],
       "sources": [
         {
-          "type": "file",
-          "path": "setup.sh"
-        },
-        {
-          "type": "file",
-          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.1.9/Scum_Bag_linux-x64.zip",
-          "sha256": "5a629d3379974b803254b1750da94a634680e2daa86dd8cde6625142a8ff1c82",
-          "dest-filename": "ScumBag-Linux.zip"
-        },
-        {
-          "type": "file",
-          "path": "com.github.rthomasv3.ScumBag.desktop"
-        },
-        {
-          "type": "file",
-          "path": "com.github.rthomasv3.ScumBag.png"
-        },
-        {
-          "type": "file",
-          "path": "com.github.rthomasv3.ScumBag.metainfo.xml"
+          "type": "archive",
+          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.1.9/Scum_Bag_linux-x64_flatpak.zip",
+          "sha256": "WILL_BE_CALCULATED_AFTER_RELEASE",
+          "dest-filename": "ScumBag-Flatpak.zip"
         }
       ]
     }
