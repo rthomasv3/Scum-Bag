@@ -119,7 +119,15 @@ internal sealed class GameService : IDisposable
                 try
                 {
                     Process gameProcess = null;
-                    Process steamProcess = Process.Start(_config.SteamExePath, $"steam://launch/{appState.AppId}");
+
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    {
+                        Process.Start("xdg-open", $"steam://launch/{appState.AppId}");
+                    }
+                    else
+                    {
+                        Process.Start(_config.SteamExePath, $"steam://launch/{appState.AppId}");
+                    }
 
                     HashSet<string> possibleGameExecutables = new();
 
