@@ -39,8 +39,9 @@
         },
         {
           "type": "file",
-          "path": "ScumBag-Linux.zip",
-          "sha256": "99ecc70e6a7ccf27734bdd44eb6822de6efff8cb99dfd660dd785a1a27c96fe2"
+          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.1.9/Scum_Bag_linux-x64.zip",
+          "sha256": "5a629d3379974b803254b1750da94a634680e2daa86dd8cde6625142a8ff1c82",
+          "dest-filename": "ScumBag-Linux.zip"
         },
         {
           "type": "file",
