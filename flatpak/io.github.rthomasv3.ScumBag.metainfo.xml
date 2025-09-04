@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.github.rthomasv3.ScumBag</id>
+  <id>io.github.rthomasv3.ScumBag</id>
   <name>Scum Bag</name>
   <summary>Save Scummer - Automatically backup and restore game save files</summary>
 
@@ -21,7 +21,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">com.github.rthomasv3.ScumBag.desktop</launchable>
+  <launchable type="desktop-id">io.github.rthomasv3.ScumBag.desktop</launchable>
 
   <url type="homepage">https://github.com/rthomasv3/Scum-Bag</url>
   <url type="bugtracker">https://github.com/rthomasv3/Scum-Bag/issues</url>

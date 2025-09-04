@@ -1,5 +1,5 @@
 {
-  "app-id": "com.github.rthomasv3.ScumBag",
+  "app-id": "io.github.rthomasv3.Scum-Bag",
   "runtime": "org.gnome.Platform",
   "runtime-version": "47",
   "sdk": "org.gnome.Sdk",

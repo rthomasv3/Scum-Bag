@@ -330,7 +330,7 @@ internal sealed class GameService : IDisposable
                             {
                                 // Log that this library needs manual permission
                                 _loggingService.LogInfo($"Steam library at {libraryFolder.Path} requires permission. " +
-                                    $"Run: flatpak override --user --filesystem={libraryFolder.Path}:ro com.github.rthomasv3.ScumBag");
+                                    $"Run: flatpak override --user --filesystem={libraryFolder.Path}:ro io.github.rthomasv3.ScumBag");
                             }
                         }
                         else if (logInfo)
