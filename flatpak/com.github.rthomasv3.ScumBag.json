@@ -35,8 +35,8 @@
       "sources": [
         {
           "type": "archive",
-          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.1.9/Scum_Bag_linux-x64_flatpak.zip",
-          "sha256": "WILL_BE_CALCULATED_AFTER_RELEASE",
+          "url": "https://github.com/rthomasv3/Scum-Bag/releases/download/v1.2.0/Scum_Bag_linux-x64_flatpak.zip",
+          "sha256": "8eb74c61139e9f72009420d8d6f57aa1c64a1788daa41d6e4d751f2c48d85864",
           "dest-filename": "ScumBag-Flatpak.zip"
         }
       ]
