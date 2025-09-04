@@ -51,7 +51,6 @@
     <keyword>restore</keyword>
     <keyword>gaming</keyword>
     <keyword>steam</keyword>
-    <keyword>scum</keyword>
   </keywords>
 
   <screenshots>
@@ -62,7 +61,7 @@
   </screenshots>
 
   <releases>
-    <release version="1.0.0" date="2025-01-01">
+    <release version="1.2.0" date="2025-09-04">
       <description>
         <p>Initial Flatpak release</p>
         <ul>
